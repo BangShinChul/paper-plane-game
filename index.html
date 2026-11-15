@@ -768,7 +768,6 @@ function flyFrame(dt) {
     const gy = Fl.x < 0 && Math.abs(Fl.z) < 23 ? H0 + 0.3 : 0;
     if (Fl.y <= gy + 0.05) { Fl.y = gy + 0.05; placePlane(); endFlight(gy ? '옥상에 떨어졌다' : '착륙!'); }
     else for (const c of colliders) { const hit = c.h ? Math.abs(Fl.x - c.x) < (c.bx || c.r) && Math.abs(Fl.z - c.z) < c.r && Fl.y < c.h : Math.hypot(Fl.x - c.x, Fl.y - c.y, Fl.z - c.z) < c.r; if (hit) { puff(Fl.x, Fl.y, Fl.z, 0xffffff, 14); flashFx('#fff', 0.4); shake = 0.6; endFlight('장애물에 걸렸다!'); break; } }
-    if (Fl.t > 180) endFlight('바람을 타고 사라졌다');
     updateChunks(Fl.x);
     const cp = Math.cos(Fl.psi), sp = Math.sin(Fl.psi), want = V3(Fl.x - cp * 1.5, Math.max(Fl.y + 0.95, 0.5), Fl.z - sp * 1.5); camPos.lerp(want, Math.min(1, dt * 5)); camLook.lerp(V3(Fl.x + cp * 4, Fl.y, Fl.z + sp * 4), Math.min(1, dt * 7)); camB.position.copy(camPos); if (shake > 0) camB.position.add(V3(rnd(-1, 1), rnd(-1, 1), rnd(-1, 1)).multiplyScalar(shake * 0.22)); camB.lookAt(camLook); if (shake > 0) camB.rotation.z += rnd(-1, 1) * shake * 0.06;
   }
