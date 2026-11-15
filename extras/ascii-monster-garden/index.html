@@ -1,0 +1,720 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>아스키 몬스터 동산</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=IBM+Plex+Sans+KR:wght@400;600&display=swap">
+<style>
+/* Layout: full-bleed character-cell canvas; HUD floats on it as terminal-style status strips. Single dark look by choice. */
+:root {
+  color-scheme: dark;
+  --night: #0b1020;
+  --panel: rgba(9, 14, 30, 0.82);
+  --line: #2b3a63;
+  --ink: #e6ecff;
+  --dim: #8f9cc4;
+  --mint: #45d6c0;
+  --star: #ffe066;
+  --berry: #ff5d73;
+  --mono: "JetBrains Mono", "DejaVu Sans Mono", Menlo, Consolas, monospace;
+  --text: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+}
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--night); color: var(--ink); font-family: var(--text);
+  overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none;
+}
+#game { position: relative; height: 100%; overflow: hidden; }
+#screen { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; }
+.hud {
+  position: absolute; left: 0; right: 0; pointer-events: none;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; gap: 8px;
+}
+#top { top: 10px; align-items: flex-start; flex-wrap: wrap; }
+#bottom { bottom: 14px; flex-direction: column; align-items: center; }
+.strip {
+  background: var(--panel); border: 1px solid var(--line); padding: 5px 10px;
+  font: 500 13px/1.4 var(--mono); display: flex; gap: 14px; flex-wrap: wrap;
+  font-variant-numeric: tabular-nums;
+}
+.strip b { font-weight: 700; }
+.strip .k { font-family: var(--text); color: var(--dim); margin-right: 5px; font-size: 12px; }
+#sFriends b { color: var(--mint); } #sBerry b { color: var(--berry); } #sTime b { color: var(--star); }
+#sBiome { font-family: var(--text); }
+button {
+  font: 600 13px/1.4 var(--text); color: var(--ink); background: var(--panel);
+  border: 1px solid var(--line); padding: 5px 12px; cursor: pointer; pointer-events: auto;
+}
+button:hover { border-color: var(--mint); }
+button:focus-visible { outline: 2px solid var(--star); outline-offset: 2px; }
+#prompt, #toast {
+  background: var(--panel); border: 1px solid var(--line); padding: 7px 14px;
+  font-size: 14px; max-width: 100%; text-align: center;
+}
+#prompt kbd { font: 700 13px var(--mono); color: var(--night); background: var(--star); padding: 1px 7px; margin-right: 8px; }
+#toast { border-color: var(--mint); color: var(--ink); }
+#keys { font: 500 11px/1.5 var(--mono); color: var(--dim); text-align: center; text-shadow: 0 1px 2px #000; }
+#pad { position: absolute; right: max(16px, env(safe-area-inset-right, 0px)); bottom: 84px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+#pad button { width: 64px; height: 64px; border-radius: 50%; font: 700 15px var(--mono); padding: 0; }
+#pad button.on { background: var(--mint); color: var(--night); }
+#stick { position: absolute; width: 110px; height: 110px; border: 1px solid var(--line); border-radius: 50%; background: rgba(9,14,30,.35); pointer-events: none; }
+#stick i { position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; margin: -22px; border-radius: 50%; background: var(--mint); opacity: .7; }
+
+.overlay {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: rgba(6, 9, 22, 0.72); overflow-y: auto;
+  padding-block: 20px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.card { background: var(--panel); border: 1px solid var(--line); padding: 24px; max-width: 620px; width: 100%; margin: auto; }
+.card h1 { font: 700 clamp(22px, 5vw, 34px)/1.15 var(--mono); margin: 0 0 4px; color: var(--star); letter-spacing: .02em; text-wrap: balance; }
+.card h2 { font: 700 18px var(--mono); margin: 0 0 14px; color: var(--star); }
+.card p { margin: 10px 0; line-height: 1.65; color: var(--ink); font-size: 14px; }
+.card .sub { color: var(--dim); font-size: 13px; }
+pre.art { font: 700 16px/1.15 var(--mono); color: var(--mint); margin: 14px 0; }
+.keys { display: grid; grid-template-columns: auto 1fr; gap: 5px 14px; font-size: 13px; margin: 14px 0 18px; }
+.keys kbd { font: 700 12px var(--mono); color: var(--star); white-space: nowrap; }
+.go { font: 700 15px var(--mono); background: var(--mint); color: var(--night); border-color: var(--mint); padding: 10px 22px; }
+.go:hover { background: var(--star); border-color: var(--star); }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+#dexGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.mon { border: 1px solid var(--line); padding: 10px; min-width: 0; }
+.mon pre { font: 700 15px/1.15 var(--mono); margin: 0 0 8px; min-height: 2.3em; }
+.mon .n { font-weight: 600; font-size: 14px; }
+.mon .h { color: var(--dim); font-size: 12px; line-height: 1.5; margin-top: 3px; }
+.mon.unknown pre { color: var(--line) !important; }
+.mon.known { border-color: var(--mint); }
+@media (pointer: fine) { #pad { display: none; } }
+@media (pointer: coarse) { #keys { display: none; } #bottom { bottom: 14px; padding-right: 170px; align-items: flex-start; } }
+</style>
+
+<div id="game">
+  <canvas id="screen" aria-label="게임 화면"></canvas>
+
+  <div class="hud" id="top" hidden>
+    <div class="strip">
+      <span id="sFriends"><span class="k">친구</span><b>0/8</b></span>
+      <span id="sBerry"><span class="k">열매</span><b>0</b></span>
+      <span id="sTime"><span class="k">시각</span><b>08:00</b></span>
+      <span id="sBiome">풀밭</span>
+    </div>
+    <button id="btnDex" type="button">도감</button>
+    <button id="btnSound" type="button">소리 켜짐</button>
+  </div>
+
+  <div class="hud" id="bottom" hidden>
+    <div id="toast" hidden></div>
+    <div id="prompt" hidden></div>
+    <div id="keys">WASD 이동 · Q/E·드래그 시점 · 휠 거리 · Shift 달리기 · Space 점프 · F 행동 · X 반짝이 · Tab 도감 · [ ] 글자 크기</div>
+  </div>
+
+  <div id="stick" hidden><i></i></div>
+  <div id="pad" hidden>
+    <button type="button" data-key="KeyX">✦</button>
+    <button type="button" data-key="KeyF">F</button>
+    <button type="button" data-key="ShiftLeft">달리기</button>
+    <button type="button" data-key="Space">점프</button>
+  </div>
+
+  <div class="overlay" id="title">
+    <div class="card">
+      <h1>아스키 몬스터 동산</h1>
+      <div class="sub">3D 공간을 글자로 그려 내는 ASCII 아트 오픈월드</div>
+<pre class="art"> n_n  *
+(o.o)_/   루미</pre>
+      <p>별꼬리 루미가 되어 풀밭, 숲, 꽃밭, 바위 언덕, 눈 봉우리, 물가를 돌아다니세요. 덤불에서 열매를 따서 야생 몬스터에게 건네면 친구가 되어 뒤를 따라옵니다. 여덟 종을 모두 만나 보세요. 한 종은 밤에만 나타납니다.</p>
+      <div class="keys">
+        <kbd>W A S D</kbd><span>이동 (모바일: 화면 왼쪽을 누르고 끌기)</span>
+        <kbd>Q / E · 드래그 · 휠</kbd><span>시점 회전 · 카메라 높이 · 거리</span>
+        <kbd>Shift · Space</kbd><span>달리기 · 점프</span>
+        <kbd>F</kbd><span>열매 따기, 몬스터에게 열매 주기</span>
+        <kbd>X</kbd><span>반짝이: 근처 몬스터를 불러 모으기</span>
+        <kbd>Tab</kbd><span>도감</span>
+        <kbd>[ · ]</kbd><span>글자 크게 · 촘촘하게</span>
+      </div>
+      <div class="row">
+        <button class="go" id="btnStart" type="button">동산으로 나가기</button>
+        <button id="btnReset" type="button" hidden>처음부터 다시</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="dex" hidden>
+    <div class="card">
+      <h2>몬스터 도감 <span id="dexCount"></span></h2>
+      <div id="dexGrid"></div>
+      <button id="btnDexClose" type="button">닫기 (Tab)</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const canvas = $('screen'), ctx = canvas.getContext('2d', { alpha: false });
+
+/* ---------- noise & world ---------- */
+const SEED = 20;
+function hash2(x, y, s) {
+  let h = Math.imul(x, 374761393) ^ Math.imul(y, 668265263) ^ Math.imul(s + SEED, 1274126177);
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+function vnoise(x, y, s) {
+  const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
+  const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+  const a = hash2(xi, yi, s), b = hash2(xi + 1, yi, s), c = hash2(xi, yi + 1, s), d = hash2(xi + 1, yi + 1, s);
+  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+}
+function fbm(x, y, s, o) {
+  let a = 0, amp = 0.5, f = 1, n = 0;
+  for (let i = 0; i < o; i++) { a += amp * vnoise(x * f, y * f, s + i * 7); n += amp; amp *= 0.5; f *= 2; }
+  return a / n;
+}
+function heightAt(x, y) {
+  let h = (fbm(x / 110, y / 110, 1, 5) * 2 - 1) * 46 + 9;
+  const d = Math.hypot(x, y);
+  if (d < 60) { let w = d < 20 ? 1 : (60 - d) / 40; w = w * w * (3 - 2 * w); h += (2.5 + vnoise(x / 9, y / 9, 3) - h) * w; }
+  return h;
+}
+const WATER = 0, SAND = 1, GRASS = 2, FLOWER = 3, FOREST = 4, ROCK = 5, SNOW = 6;
+const KNAME = ['물가', '모래밭', '풀밭', '꽃밭', '숲', '바위 언덕', '눈 봉우리'];
+const D_PINE = 1, D_TREE = 2, D_BUSH = 3, D_ROCK = 4, D_SNOWPINE = 5;
+const CS = 32, chunks = new Map();
+function genChunk(cx, cy) {
+  const g = CS + 1, hg = new Float32Array(g * g), x0 = cx * CS, y0 = cy * CS;
+  for (let j = 0; j < g; j++) for (let i = 0; i < g; i++) hg[j * g + i] = heightAt(x0 + i, y0 + j);
+  const c = { h: new Float32Array(CS * CS), kind: new Uint8Array(CS * CS), deco: new Uint8Array(CS * CS),
+    shade: new Float32Array(CS * CS), rnd: new Uint8Array(CS * CS), decos: [] };
+  for (let j = 0; j < CS; j++) for (let i = 0; i < CS; i++) {
+    const k = j * CS + i, h = hg[j * g + i], x = x0 + i, y = y0 + j;
+    const dx = hg[j * g + i + 1] - h, dy = hg[(j + 1) * g + i] - h;
+    c.h[k] = h;
+    c.shade[k] = Math.max(0.55, Math.min(1.25, 0.96 - (dx * 0.7 + dy * 0.5) * 0.42));
+    c.rnd[k] = hash2(x, y, 31) * 256;
+    let kind;
+    if (h < 0) kind = WATER; else if (h < 1) kind = SAND; else if (h > 15) kind = SNOW; else if (h > 10.5) kind = ROCK;
+    else { const m = fbm(x / 130 + 40, y / 130 - 17, 50, 3) * 2 - 1; kind = x * x + y * y < 700 ? GRASS : m > 0.07 ? FOREST : m < -0.1 ? FLOWER : GRASS; }
+    c.kind[k] = kind;
+    const r = hash2(x, y, 77); let d = 0;
+    if (x * x + y * y > 30) {
+      if (kind === FOREST) d = r < 0.06 ? D_PINE : r < 0.072 ? D_BUSH : 0;
+      else if (kind === GRASS) d = r < 0.010 ? D_TREE : r < 0.020 ? D_BUSH : r < 0.023 ? D_ROCK : 0;
+      else if (kind === FLOWER) d = r < 0.005 ? D_TREE : r < 0.015 ? D_BUSH : 0;
+      else if (kind === ROCK) d = r < 0.03 ? D_ROCK : r < 0.034 ? D_BUSH : 0;
+      else if (kind === SNOW) d = r < 0.02 ? D_SNOWPINE : r < 0.03 ? D_ROCK : 0;
+    }
+    if (d) { c.deco[k] = d; c.decos.push({ x: x + 0.5, y: y + 0.5, z: (h + hg[j * g + i + 1] + hg[(j + 1) * g + i] + hg[(j + 1) * g + i + 1]) / 4, t: d, r: hash2(x, y, 5), key: x + ',' + y }); }
+  }
+  return c;
+}
+let lcx = 1e9, lcy = 1e9, lch = null;
+function chunkAt(cx, cy) {
+  if (cx === lcx && cy === lcy) return lch;
+  const key = (cx + 32768) * 65536 + (cy + 32768);
+  let c = chunks.get(key);
+  if (!c) { c = genChunk(cx, cy); chunks.set(key, c); if (chunks.size > 500) { const it = chunks.keys(); for (let i = 0; i < 150; i++) chunks.delete(it.next().value); } }
+  lcx = cx; lcy = cy; lch = c; return c;
+}
+const T = { h: 0, kind: 0, deco: 0 };
+function tile(x, y) {
+  const ix = Math.floor(x), iy = Math.floor(y), cx = ix >> 5, cy = iy >> 5, c = chunkAt(cx, cy), k = (iy - (cy << 5)) * CS + ix - (cx << 5);
+  T.h = c.h[k]; T.kind = c.kind[k]; T.deco = c.deco[k]; return T;
+}
+function hAt(x, y) {
+  const ix = Math.floor(x), iy = Math.floor(y), tx = x - ix, ty = y - iy;
+  const a = tile(ix, iy).h, b = tile(ix + 1, iy).h, c = tile(ix, iy + 1).h, d = tile(ix + 1, iy + 1).h;
+  return a + (b - a) * tx + (c - a) * ty + (a - b - c + d) * tx * ty;
+}
+function kindAt(x, y) { if (hAt(x, y) < 0) return WATER; const k = tile(x, y).kind; return k === WATER ? SAND : k; }
+const groundAt = (x, y) => Math.max(0, hAt(x, y));
+const solidAt = (x, y) => { const d = tile(x, y).deco; return d === D_PINE || d === D_TREE || d === D_ROCK || d === D_SNOWPINE; };
+
+/* ---------- 3D models ---------- */
+function mkModel() { return { v: [], n: [], c: [], e: [], pts: [] }; }
+function addTri(m, a, b, c, col, ctr, em) {
+  let nx = (b[1] - a[1]) * (c[2] - a[2]) - (b[2] - a[2]) * (c[1] - a[1]), ny = (b[2] - a[2]) * (c[0] - a[0]) - (b[0] - a[0]) * (c[2] - a[2]), nz = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+  const l = Math.hypot(nx, ny, nz); if (l < 1e-9) return; nx /= l; ny /= l; nz /= l;
+  if (nx * ((a[0] + b[0] + c[0]) / 3 - ctr[0]) + ny * ((a[1] + b[1] + c[1]) / 3 - ctr[1]) + nz * ((a[2] + b[2] + c[2]) / 3 - ctr[2]) < 0) { nx = -nx; ny = -ny; nz = -nz; }
+  m.v.push(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2]); m.n.push(nx, ny, nz); m.c.push(col); m.e.push(em ? 1 : 0);
+}
+function ell(m, cx, cy, cz, rx, ry, rz, col, em, seg, rings) {
+  seg = seg || 8; rings = rings || 5; const ctr = [cx, cy, cz];
+  const pt = (i, j) => { const th = Math.PI * j / rings, ph = 2 * Math.PI * i / seg; return [cx + rx * Math.sin(th) * Math.cos(ph), cy + ry * Math.sin(th) * Math.sin(ph), cz + rz * Math.cos(th)]; };
+  for (let j = 0; j < rings; j++) for (let i = 0; i < seg; i++) {
+    const a = pt(i, j), b = pt(i + 1, j), c = pt(i, j + 1), d = pt(i + 1, j + 1);
+    if (j > 0) addTri(m, a, b, d, col, ctr, em); if (j < rings - 1) addTri(m, a, d, c, col, ctr, em);
+  }
+}
+function cone(m, cx, cy, cz, r, h, col, em, seg) {
+  seg = seg || 7; const ap = [cx, cy, cz + h], ctr = [cx, cy, cz + h * 0.25];
+  for (let i = 0; i < seg; i++) { const a = 6.2832 * i / seg, b = 6.2832 * (i + 1) / seg; addTri(m, [cx + r * Math.cos(a), cy + r * Math.sin(a), cz], [cx + r * Math.cos(b), cy + r * Math.sin(b), cz], ap, col, ctr, em); }
+}
+function box(m, cx, cy, cz, sx, sy, sz, col, em) {
+  const p = (i, j, k) => [cx + (i - 0.5) * sx, cy + (j - 0.5) * sy, cz + (k - 0.5) * sz], ctr = [cx, cy, cz];
+  const q = (a, b, c, d) => { addTri(m, a, b, c, col, ctr, em); addTri(m, a, c, d, col, ctr, em); };
+  q(p(0, 0, 0), p(1, 0, 0), p(1, 1, 0), p(0, 1, 0)); q(p(0, 0, 1), p(1, 0, 1), p(1, 1, 1), p(0, 1, 1));
+  q(p(0, 0, 0), p(1, 0, 0), p(1, 0, 1), p(0, 0, 1)); q(p(0, 1, 0), p(1, 1, 0), p(1, 1, 1), p(0, 1, 1));
+  q(p(0, 0, 0), p(0, 1, 0), p(0, 1, 1), p(0, 0, 1)); q(p(1, 0, 0), p(1, 1, 0), p(1, 1, 1), p(1, 0, 1));
+}
+const fin = m => { m.v = new Float32Array(m.v); m.n = new Float32Array(m.n); return m; };
+const BR = [130, 88, 50], DARK = [12, 22, 30], BERRY = [255, 70, 105];
+const MODELS = {};
+{
+  const pine = (leaf, leaf2) => { const m = mkModel(); box(m, 0, 0, 0.5, 0.36, 0.36, 1.2, BR); cone(m, 0, 0, 0.9, 1.5, 2.3, leaf); cone(m, 0, 0, 2.2, 1.1, 2.0, leaf2); cone(m, 0, 0, 3.4, 0.7, 1.6, leaf); return fin(m); };
+  MODELS[D_PINE] = pine([40, 130, 66], [56, 156, 78]);
+  MODELS[D_SNOWPINE] = pine([150, 190, 190], [236, 244, 250]);
+  let m = mkModel(); box(m, 0, 0, 0.8, 0.4, 0.4, 1.7, BR); ell(m, 0, 0, 2.7, 1.6, 1.6, 1.35, [84, 170, 62]); ell(m, 0.7, 0.4, 3.5, 0.9, 0.9, 0.8, [110, 196, 76], 0, 6, 4); MODELS[D_TREE] = fin(m);
+  m = mkModel(); ell(m, 0, 0, 0.3, 0.95, 0.8, 0.7, [150, 146, 142], 0, 5, 3); ell(m, 0.6, 0.3, 0.15, 0.5, 0.45, 0.4, [124, 120, 118], 0, 4, 3); MODELS[D_ROCK] = fin(m);
+  const bush = b => { const m = mkModel(); ell(m, 0, 0, 0.45, 0.9, 0.9, 0.6, [58, 150, 62], 0, 7, 4); ell(m, 0.5, -0.3, 0.6, 0.5, 0.5, 0.45, [78, 172, 74], 0, 5, 3);
+    if (b) [[0.75, 0.2, 0.7], [-0.6, 0.55, 0.7], [0.1, -0.85, 0.6], [-0.2, 0.1, 1.08], [-0.75, -0.4, 0.65], [0.4, 0.75, 0.65], [0.85, -0.5, 0.8]].forEach(p => m.pts.push({ p, ch: 111, col: BERRY }));
+    return fin(m); };
+  MODELS.bush = bush(false); MODELS.bushB = bush(true);
+  // player: Lumi, faces +x
+  m = mkModel(); const MINT = [70, 214, 192], MINT2 = [130, 240, 220], STAR = [255, 226, 90];
+  ell(m, 0, 0, 0.5, 0.6, 0.45, 0.48, MINT); ell(m, 0.34, 0, 1.12, 0.43, 0.43, 0.4, MINT2);
+  cone(m, 0.3, 0.26, 1.38, 0.15, 0.5, MINT, 0, 5); cone(m, 0.3, -0.26, 1.38, 0.15, 0.5, MINT, 0, 5);
+  box(m, -0.72, 0, 0.95, 0.14, 0.14, 0.75, MINT); ell(m, -0.76, 0, 1.55, 0.27, 0.27, 0.27, STAR, 1, 4, 2);
+  m.pts.push({ p: [0.72, 0.18, 1.2], ch: 111, col: DARK }, { p: [0.72, -0.18, 1.2], ch: 111, col: DARK }, { p: [0.78, 0, 1.04], ch: 46, col: DARK });
+  MODELS.player = fin(m);
+}
+const eyes = (m, x, y, z, ch) => m.pts.push({ p: [x, y, z], ch: ch || 111, col: DARK }, { p: [x, -y, z], ch: ch || 111, col: DARK });
+const wings = (m, col, z) => { [1, -1].forEach(s => addTri(m, [0.1, 0, 0], [-0.3, s * 0.85, z], [0.4, s * 0.85, z], col, [0, 0, -5], 0)); };
+const lite = c => c.map(v => Math.min(255, v * 1.15 + 20));
+const SPECIES = [
+  { name: '솜뭉치', c: [240, 240, 250], rows: [' ,@, ', '(o.o)'], kinds: [GRASS], hint: '풀밭에서 느긋하게 굴러다녀요.',
+    build(m, c) { ell(m, 0, 0, 0.5, 0.58, 0.55, 0.5, c); ell(m, -0.1, 0, 1.02, 0.25, 0.25, 0.22, lite(c), 0, 5, 3); ell(m, -0.45, 0.3, 0.7, 0.25, 0.25, 0.22, lite(c), 0, 5, 3); ell(m, -0.45, -0.3, 0.7, 0.25, 0.25, 0.22, lite(c), 0, 5, 3); eyes(m, 0.52, 0.2, 0.62); } },
+  { name: '잎새돌이', c: [120, 215, 80], rows: [' \\|/ ', '(o.o)'], kinds: [FOREST], hint: '숲 속 나무 사이에 숨어 있어요.',
+    build(m, c) { ell(m, 0, 0, 0.48, 0.52, 0.5, 0.48, c); cone(m, 0, 0, 0.85, 0.3, 0.75, [190, 250, 110], 0, 5); cone(m, -0.2, 0.25, 0.8, 0.18, 0.5, [190, 250, 110], 0, 4); eyes(m, 0.48, 0.2, 0.6); } },
+  { name: '물방울이', c: [90, 190, 255], rows: ['  ,  ', '(o o)'], kinds: [WATER], swim: true, hint: '물 위를 동동 떠다녀요. 헤엄쳐서 다가가세요.',
+    build(m, c) { ell(m, 0, 0, 0.42, 0.52, 0.52, 0.45, c); cone(m, 0, 0, 0.72, 0.36, 0.7, lite(c), 0, 7); eyes(m, 0.48, 0.2, 0.52); } },
+  { name: '돌멩구', c: [236, 150, 70], rows: [' ___ ', '[-.-]'], kinds: [ROCK], hint: '높은 바위 언덕에서 졸고 있어요.',
+    build(m, c) { box(m, 0, 0, 0.45, 1.0, 0.95, 0.85, c); box(m, 0, 0, 0.95, 0.6, 0.55, 0.2, lite(c)); eyes(m, 0.52, 0.22, 0.58, 45); } },
+  { name: '꽃나비', c: [255, 130, 205], rows: ['}o{'], kinds: [FLOWER], fly: true, hint: '꽃밭 위를 팔랑팔랑 날아다녀요.',
+    build(m, c, f) { ell(m, 0, 0, 0, 0.34, 0.14, 0.14, [120, 60, 110], 0, 5, 3); wings(m, c, f ? 0.5 : -0.25); } },
+  { name: '눈송이', c: [110, 222, 255], rows: [' .*. ', '(^.^)'], kinds: [SNOW], hint: '가장 높은 눈 봉우리에 살아요.',
+    build(m, c) { ell(m, 0, 0, 0.45, 0.52, 0.52, 0.46, c); ell(m, 0, 0, 1.1, 0.36, 0.36, 0.33, lite(c)); cone(m, 0, 0, 1.36, 0.14, 0.4, [250, 250, 255], 1, 4); eyes(m, 0.33, 0.14, 1.16, 94); } },
+  { name: '모래게', c: [236, 92, 72], rows: ['V   V', '(o_o)'], kinds: [SAND], hint: '물가 모래밭을 옆으로 걸어요.',
+    build(m, c) { ell(m, 0, 0, 0.3, 0.45, 0.68, 0.28, c); ell(m, 0.35, 0.8, 0.62, 0.22, 0.22, 0.24, lite(c), 0, 5, 3); ell(m, 0.35, -0.8, 0.62, 0.22, 0.22, 0.24, lite(c), 0, 5, 3); eyes(m, 0.36, 0.2, 0.7); } },
+  { name: '반디', c: [255, 238, 110], rows: ['<*>'], kinds: [SAND, GRASS, FLOWER, FOREST, ROCK, SNOW], fly: true, night: true, glow: true, hint: '밤이 되어야 빛을 내며 나타나요.',
+    build(m, c, f) { ell(m, 0, 0, 0, 0.24, 0.2, 0.2, c, 1, 5, 3); wings(m, [200, 230, 255], f ? 0.4 : -0.1); } }
+];
+SPECIES.forEach((s, i) => { s.id = i; let m = mkModel(); s.build(m, s.c, 0); s.model = fin(m); if (s.fly) { m = mkModel(); s.build(m, s.c, 1); s.model2 = fin(m); } else s.model2 = s.model; });
+
+/* ---------- state ---------- */
+const P = { x: 0.5, y: 0.5, z: 3, vz: 0, dir: 1.2, moving: false, ground: true };
+let yaw = 0.6, camx = 0, camy = 0, camz = 3, camH = 3.1, DIST = 9.5;
+let clock = 0.33, gameT = 0, berries = 0, started = false, soundOn = true, sparkCd = 0;
+const dex = new Set(), creatures = [], parts = [], trail = [], picked = new Map();
+const keys = new Set(); let joyX = 0, joyY = 0;
+
+const SAVE = 'ascii-monster-garden-v1';
+function save() {
+  try { localStorage.setItem(SAVE, JSON.stringify({ x: P.x, y: P.y, berries, dex: [...dex], clock, yaw, friends: creatures.filter(c => c.follow).map(c => c.s.id) })); } catch (e) {}
+}
+function load() {
+  try {
+    const d = JSON.parse(localStorage.getItem(SAVE)); if (!d) return false;
+    P.x = d.x; P.y = d.y; berries = d.berries | 0; clock = d.clock || 0.33; yaw = d.yaw || 0.6;
+    (d.dex || []).forEach(i => dex.add(i));
+    (d.friends || []).forEach((id, i) => creatures.push(mkCreature(SPECIES[id], P.x - 1 - i, P.y - 1, true)));
+    return dex.size > 0 || berries > 0;
+  } catch (e) { return false; }
+}
+
+/* ---------- audio ---------- */
+let actx = null;
+function beep(f, dur, type, vol, slide) {
+  if (!soundOn || !actx) return;
+  try {
+    const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime;
+    o.type = type || 'square'; o.frequency.setValueAtTime(f, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(slide, t + dur);
+    g.gain.setValueAtTime(vol || 0.05, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur);
+  } catch (e) {}
+}
+const jingle = notes => notes.forEach((n, i) => setTimeout(() => beep(n, 0.16, 'triangle', 0.08), i * 90));
+
+/* ---------- creatures ---------- */
+function mkCreature(s, x, y, follow) {
+  return { s, x, y, z: groundAt(x, y), tx: x, ty: y, timer: 0, attract: 0, follow: !!follow, met: !!follow, dir: Math.random() * 6.28, moving: false, ph: Math.random() * 6 };
+}
+const canEnter = (s, x, y) => { if (s.fly) return true; const k = kindAt(x, y); return s.swim ? k === WATER : k !== WATER && !solidAt(x, y); };
+function isNight() { return dayAmt() < 0.3; }
+function dayAmt() { const s = Math.sin((clock - 0.25) * Math.PI * 2), t = Math.max(0, Math.min(1, (s + 0.15) / 0.4)); return t * t * (3 - 2 * t); }
+let spawnT = 0;
+function spawnTick(dt) {
+  spawnT -= dt; if (spawnT > 0) return; spawnT = 0.35;
+  const night = isNight();
+  for (let i = creatures.length - 1; i >= 0; i--) {
+    const c = creatures[i]; if (c.follow) continue;
+    const d = Math.hypot(c.x - P.x, c.y - P.y);
+    if (d > 95 || (c.s.night && !night && d > 12)) creatures.splice(i, 1);
+  }
+  if (creatures.filter(c => !c.follow).length >= 18) return;
+  const a = Math.random() * 6.283, d = 24 + Math.random() * 40, x = P.x + Math.cos(a) * d, y = P.y + Math.sin(a) * d, k = kindAt(x, y);
+  let cand = SPECIES.filter(s => s.kinds.includes(k) && (!s.night || night));
+  if (!cand.length) return;
+  const fresh = cand.filter(s => !dex.has(s.id)); if (fresh.length && Math.random() < 0.6) cand = fresh;
+  const s = cand[(Math.random() * cand.length) | 0];
+  if (!s.fly && !s.swim && solidAt(x, y)) return;
+  if (creatures.filter(c => c.s === s && !c.follow).length >= 4) return;
+  creatures.push(mkCreature(s, x, y, false));
+}
+function updCreature(c, dt, idx) {
+  const s = c.s; let tx, ty, sp;
+  if (c.follow) {
+    const t = trail[trail.length - 1 - (idx + 1) * 2] || P; tx = t.x; ty = t.y;
+    const d = Math.hypot(tx - c.x, ty - c.y); sp = d > 0.8 ? Math.min(14, 3 + d * 1.6) : 0;
+    if (Math.hypot(P.x - c.x, P.y - c.y) > 50) { c.x = P.x - 2; c.y = P.y - 2; }
+  } else if (c.attract > 0) {
+    c.attract -= dt; tx = P.x; ty = P.y; sp = Math.hypot(tx - c.x, ty - c.y) > 2.4 ? 3.6 : 0;
+  } else {
+    c.timer -= dt;
+    if (c.timer <= 0) { c.timer = 1.5 + Math.random() * 4; const r = Math.random() < 0.3 ? 0 : 7; c.tx = c.x + (Math.random() * 2 - 1) * r; c.ty = c.y + (Math.random() * 2 - 1) * r; }
+    tx = c.tx; ty = c.ty; sp = s.fly ? 3 : 1.8;
+  }
+  const dx = tx - c.x, dy = ty - c.y, d = Math.hypot(dx, dy); c.moving = false;
+  if (sp > 0 && d > 0.25) {
+    const st = Math.min(d, sp * dt), nx = c.x + dx / d * st, ny = c.y + dy / d * st;
+    if (c.follow || canEnter(s, nx, ny)) { c.x = nx; c.y = ny; c.moving = true; c.dir = Math.atan2(dy, dx); }
+    else c.timer = 0;
+  }
+  let g = groundAt(c.x, c.y);
+  if (s.fly) g += 1.7 + Math.sin(gameT * 3 + c.ph) * 0.5; else if (c.moving) g += Math.abs(Math.sin(gameT * 9 + c.ph)) * 0.55;
+  c.z += (g - c.z) * Math.min(1, dt * 12);
+}
+
+/* ---------- interaction ---------- */
+let target = null;
+function findTarget() {
+  let best = null, bd = 3.4;
+  for (const c of creatures) { if (c.met) continue; const d = Math.hypot(c.x - P.x, c.y - P.y); if (d < bd) { bd = d; best = c; } }
+  if (best) return { type: 'mon', c: best };
+  const px = Math.floor(P.x), py = Math.floor(P.y); let bb = null; bd = 2.8;
+  for (let j = -3; j <= 3; j++) for (let i = -3; i <= 3; i++) {
+    const x = px + i, y = py + j; if (tile(x, y).deco !== D_BUSH) continue;
+    const key = x + ',' + y; if ((picked.get(key) || 0) > gameT) continue;
+    const d = Math.hypot(x + 0.5 - P.x, y + 0.5 - P.y); if (d < bd) { bd = d; bb = { type: 'bush', key, x: x + 0.5, y: y + 0.5, z: T.h }; tile(x, y); }
+  }
+  return bb;
+}
+function burst(x, y, z, ch, col, n) {
+  for (let i = 0; i < n; i++) { const a = Math.random() * 6.283, s = 1 + Math.random() * 3; parts.push({ x, y, z: z + 1, vx: Math.cos(a) * s, vy: Math.sin(a) * s, vz: 2 + Math.random() * 4, ch, col, life: 0.7 + Math.random() * 0.6 }); }
+}
+function interact() {
+  if (!target) return;
+  if (target.type === 'bush') {
+    const n = 1 + ((Math.random() * 3) | 0); berries += n; picked.set(target.key, gameT + 80);
+    burst(target.x, target.y, target.z, 'o', [255, 80, 110], 5); toast('열매 ' + n + '개를 땄어요.'); beep(660, 0.09, 'square', 0.05, 990);
+  } else {
+    const c = target.c;
+    if (berries < 1) { toast(c.s.name + '에게 줄 열매가 없어요. 덤불 (o%o) 에서 따 오세요.'); beep(180, 0.15, 'sawtooth', 0.04); return; }
+    berries--; c.met = true; const isNew = !dex.has(c.s.id); dex.add(c.s.id);
+    if (creatures.filter(k => k.follow).length < 6) c.follow = true;
+    burst(c.x, c.y, c.z, '\u2665', [255, 110, 150], 9); jingle([523, 659, 784, 1047]);
+    toast(c.s.name + (isNew ? '와(과) 친구가 되었어요! 도감 ' + dex.size + '/8' : '와(과) 또 친구가 되었어요!'));
+    if (isNew && dex.size === 8) setTimeout(() => { toast('여덟 종 모두와 친구가 되었어요! 동산의 진짜 주인이에요.', 7000); jingle([523, 659, 784, 1047, 784, 1047, 1319]); for (let i = 0; i < 5; i++) burst(P.x, P.y, P.z + i, '*', [255, 230, 100], 12); }, 1400);
+    save(); renderDex();
+  }
+}
+function sparkle() {
+  if (sparkCd > 0) return; sparkCd = 1.4;
+  burst(P.x, P.y, P.z, '*', [255, 230, 100], 10); burst(P.x, P.y, P.z, '+', [140, 255, 235], 8);
+  beep(880, 0.25, 'sine', 0.07, 1760);
+  for (const c of creatures) if (!c.follow && Math.hypot(c.x - P.x, c.y - P.y) < 16) c.attract = 5;
+}
+
+/* ---------- update ---------- */
+function update(dt) {
+  gameT += dt; clock = (clock + dt / 300) % 1; sparkCd -= dt;
+  const rot = (keys.has('KeyE') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyQ') || keys.has('ArrowLeft') ? 1 : 0);
+  yaw -= rot * 1.9 * dt;
+  let mx = (keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') ? 1 : 0) + joyX, my = (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0) + joyY;
+  const ml = Math.hypot(mx, my); P.moving = ml > 0.12;
+  const inWater = kindAt(P.x, P.y) === WATER;
+  if (P.moving) {
+    if (ml > 1) { mx /= ml; my /= ml; }
+    const sp = (keys.has('ShiftLeft') || keys.has('ShiftRight') ? 12 : 7.5) * (inWater ? 0.5 : 1);
+    const rx = Math.cos(yaw), ry = Math.sin(yaw), wx = (mx * rx - my * ry) * sp * dt, wy = (mx * ry + my * rx) * sp * dt;
+    if (!solidAt(P.x + wx, P.y)) P.x += wx; if (!solidAt(P.x, P.y + wy)) P.y += wy;
+    P.dir = Math.atan2(wy, wx);
+    if (inWater && Math.random() < dt * 8) parts.push({ x: P.x, y: P.y, z: 0.2, vx: 0, vy: 0, vz: 0.5, ch: 'o', col: [200, 235, 255], life: 0.5 });
+  }
+  const g = inWater ? -0.6 : groundAt(P.x, P.y);
+  if (P.ground) {
+    P.z += (g - P.z) * Math.min(1, dt * 16);
+    if (keys.has('Space')) { P.vz = inWater ? 6 : 10.5; P.ground = false; beep(330, 0.12, 'square', 0.035, 660); }
+  } else { P.vz -= 30 * dt; P.z += P.vz * dt; if (P.z <= g) { P.z = g; P.ground = true; } }
+  const lt = trail[trail.length - 1];
+  if (!lt || Math.hypot(lt.x - P.x, lt.y - P.y) > 1.3) { trail.push({ x: P.x, y: P.y }); if (trail.length > 40) trail.shift(); }
+  spawnTick(dt);
+  let fi = 0; for (const c of creatures) updCreature(c, dt, c.follow ? fi++ : 0);
+  for (let i = parts.length - 1; i >= 0; i--) { const p = parts[i]; p.life -= dt; if (p.life <= 0) { parts.splice(i, 1); continue; } p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt; p.vz -= 9 * dt; }
+  camx += (P.x - camx) * Math.min(1, dt * 8); camy += (P.y - camy) * Math.min(1, dt * 8); camz += (Math.max(P.z, 0) - camz) * Math.min(1, dt * 4);
+  target = findTarget();
+}
+
+/* ---------- renderer: perspective 3D rasterised into character cells ---------- */
+let cellPx = 5.5;
+let cols = 0, rows = 0, cw = 8, chh = 16, fontPx = 13, dpr = 1;
+let chB, fgB, bgB, dpB;
+const colStr = new Array(32768);
+const cs = k => colStr[k] || (colStr[k] = 'rgb(' + (((k >> 10) & 31) << 3 | 4) + ',' + (((k >> 5) & 31) << 3 | 4) + ',' + ((k & 31) << 3 | 4) + ')');
+const chStr = []; for (let i = 0; i < 128; i++) chStr[i] = String.fromCharCode(i);
+function resize() {
+  const w = canvas.clientWidth, h = canvas.clientHeight; if (!w || !h) return;
+  dpr = Math.min(2, window.devicePixelRatio || 1);
+  cols = Math.max(56, Math.min(320, Math.round(w / cellPx))); cw = w / cols; fontPx = cw / 0.6; chh = fontPx * 1.12; rows = Math.ceil(h / chh);
+  canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
+  const n = cols * rows; chB = new Uint16Array(n); fgB = new Uint16Array(n); bgB = new Uint16Array(n); dpB = new Float32Array(n);
+}
+let TR = 1, TG = 1, TB = 1, SR = 0, SG = 0, SB = 0, AMB = 1, NIGHT = 0;
+function shade(c, L, f) {
+  let r = c[0] * L * TR, g = c[1] * L * TG, b = c[2] * L * TB;
+  r += (SR - r) * f; g += (SG - g) * f; b += (SB - b) * f;
+  return ((r > 255 ? 255 : r) >> 3) << 10 | ((g > 255 ? 255 : g) >> 3) << 5 | ((b > 255 ? 255 : b) >> 3);
+}
+const KBG = [[40, 110, 170], [204, 182, 124], [70, 142, 62], [88, 150, 66], [36, 98, 54], [120, 114, 110], [224, 232, 242]];
+const KCH = [' ', '.:. ,', '.,\'`"; ', '.,\'";', ',.:;\' ', '^#%=:.', '.\'*  '];
+const FLW = [[255, 120, 190], [255, 225, 90], [250, 250, 255], [190, 140, 255]];
+const WCH = '~-~= ~', RAMP = '.:-=+*#%@';
+const tmp = [0, 0, 0], tmp2 = [0, 0, 0];
+const SUN = [-0.48, -0.38, 0.79], FAR = 120, FOG0 = 62;
+let EX = 0, EY = 0, EZ = 0, FWX = 0, FWY = 1, RTX = 1, RTY = 0, FC = 100, FYY = 60, HOR = 0, HALF = 1;
+const SV = new Float32Array(9000);
+
+function tri(x0, y0, d0, x1, y1, d1, x2, y2, d2, bgk, fgk, lf) {
+  const W = cols, H = rows, area = (x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0); if (area > -1e-6 && area < 1e-6) return;
+  const inv = 1 / area;
+  let c0 = Math.ceil(Math.min(x0, x1, x2) - 0.5), c1 = Math.floor(Math.max(x0, x1, x2) - 0.5), r0 = Math.ceil(Math.min(y0, y1, y2) - 0.5), r1 = Math.floor(Math.max(y0, y1, y2) - 0.5);
+  if (c0 < 0) c0 = 0; if (r0 < 0) r0 = 0; if (c1 >= W) c1 = W - 1; if (r1 >= H) r1 = H - 1;
+  for (let r = r0; r <= r1; r++) {
+    const py = r + 0.5;
+    for (let c = c0; c <= c1; c++) {
+      const px = c + 0.5, w0 = ((x1 - px) * (y2 - py) - (x2 - px) * (y1 - py)) * inv, w1 = ((x2 - px) * (y0 - py) - (x0 - px) * (y2 - py)) * inv, w2 = 1 - w0 - w1;
+      if (w0 < -1e-4 || w1 < -1e-4 || w2 < -1e-4) continue;
+      const d = w0 * d0 + w1 * d1 + w2 * d2, i = r * W + c; if (d >= dpB[i]) continue;
+      dpB[i] = d; bgB[i] = bgk; fgB[i] = fgk; const q = lf + ((c * 7 + r * 13) & 3) * 0.45 | 0; chB[i] = RAMP.charCodeAt(q > 8 ? 8 : q);
+    }
+  }
+}
+function drawModel(m, x, y, z, a, s, em) {
+  const dxc = x - EX, dyc = y - EY, dep = dxc * FWX + dyc * FWY; if (dep < -3 || dep > FAR) return;
+  if (Math.abs(dxc * RTX + dyc * RTY) > dep * HALF + 4) return;
+  const c1 = Math.cos(a), s1 = Math.sin(a), ca = c1 * s, sa = s1 * s, v = m.v, nt = m.c.length, W2 = cols / 2;
+  for (let i = 0, n = nt * 3; i < n; i++) {
+    const lx = v[i * 3], ly = v[i * 3 + 1], wx = dxc + lx * ca - ly * sa, wy = dyc + lx * sa + ly * ca, d = wx * FWX + wy * FWY;
+    SV[i * 3 + 2] = d;
+    if (d > 0.6) { SV[i * 3] = W2 + (wx * RTX + wy * RTY) * FC / d; SV[i * 3 + 1] = HOR + (EZ - z - v[i * 3 + 2] * s) * FYY / d; }
+  }
+  const pd2 = (x - P.x) * (x - P.x) + (y - P.y) * (y - P.y), glow = NIGHT > 0.05 && pd2 < 144 ? NIGHT * (1 - Math.sqrt(pd2) / 12) * 0.75 : 0;
+  const f = em ? 0 : dep > FOG0 ? Math.min(1, (dep - FOG0) / (FAR - FOG0)) : 0, n = m.n;
+  for (let t = 0; t < nt; t++) {
+    const o = t * 9, d0 = SV[o + 2], d1 = SV[o + 5], d2 = SV[o + 8]; if (d0 <= 0.6 || d1 <= 0.6 || d2 <= 0.6) continue;
+    const lam = (n[t * 3] * c1 - n[t * 3 + 1] * s1) * SUN[0] + (n[t * 3] * s1 + n[t * 3 + 1] * c1) * SUN[1] + n[t * 3 + 2] * SUN[2];
+    const e = em || m.e[t], L = e ? 1.12 : AMB * (0.6 + 0.55 * (lam > 0 ? lam : 0)) + glow, col = m.c[t];
+    tri(SV[o], SV[o + 1], d0, SV[o + 3], SV[o + 4], d1, SV[o + 6], SV[o + 7], d2, shade(col, L * 0.86, f), shade(col, L * 1.32 + 0.08, f), L * 6.2);
+  }
+  for (const p of m.pts) drawPoint(x + p.p[0] * ca - p.p[1] * sa, y + p.p[0] * sa + p.p[1] * ca, z + p.p[2] * s, p.ch, p.col, 0.5, em ? 1 : Math.max(0.5, AMB + glow));
+}
+function drawPoint(x, y, z, ch, col, tol, L) {
+  const dx = x - EX, dy = y - EY, d = dx * FWX + dy * FWY; if (d < 0.6 || d > FAR) return;
+  const c = Math.floor(cols / 2 + (dx * RTX + dy * RTY) * FC / d), r = Math.floor(HOR + (EZ - z) * FYY / d);
+  if (c < 0 || r < 0 || c >= cols || r >= rows) return; const i = r * cols + c; if (d > dpB[i] + tol) return;
+  chB[i] = ch; fgB[i] = shade(col, L, 0);
+}
+
+function render() {
+  const W = cols, H = rows;
+  FWX = -Math.sin(yaw); FWY = Math.cos(yaw); RTX = FWY; RTY = -FWX;
+  const day = dayAmt(); AMB = 0.3 + 0.7 * day; NIGHT = 1 - day;
+  TR = 0.55 + 0.45 * day; TG = 0.68 + 0.32 * day; TB = 1;
+  const dusk = Math.max(0, 1 - Math.abs(day - 0.5) * 2.4);
+  SR = 14 + 126 * day + 90 * dusk; SG = 18 + 172 * day - 10 * dusk; SB = 44 + 196 * day - 60 * dusk;
+  const asp = chh / cw; FYY = Math.max(W * 0.52 / asp, H * 0.62); FC = FYY * asp; HALF = W / 2 / FC;
+  EX = camx - FWX * DIST; EY = camy - FWY * DIST; EZ = Math.max(camz + camH, groundAt(EX, EY) + 1.3);
+  HOR = H * 0.66 - (EZ - camz - 0.7) * FYY / DIST;
+  const wt = Math.floor(gameT * 2.5), hr = Math.max(0, Math.min(H, Math.floor(HOR)));
+  for (let cx = 0; cx < W; cx++) {
+    const lat = (cx + 0.5 - W / 2) / FC; const dxr = FWX + RTX * lat, dyr = FWY + RTY * lat; let ytop = H;
+    for (let t = 1; t < FAR && ytop > 0; t += 0.09 + t * 0.017) {
+      const wx = EX + dxr * t, wy = EY + dyr * t, ix = Math.floor(wx), iy = Math.floor(wy), lx = ix & 31, ly = iy & 31, c = chunkAt(ix >> 5, iy >> 5), k = ly * CS + lx;
+      let a = c.h[k], b, cc, d;
+      if (lx < 31 && ly < 31) { b = c.h[k + 1]; cc = c.h[k + CS]; d = c.h[k + CS + 1]; }
+      else { const kind0 = c.kind[k], sh0 = c.shade[k], r0 = c.rnd[k]; b = tile(ix + 1, iy).h; cc = tile(ix, iy + 1).h; d = tile(ix + 1, iy + 1).h; chunkAt(ix >> 5, iy >> 5); }
+      const tx = wx - ix, ty = wy - iy, h = a + (b - a) * tx + (cc - a) * ty + (a - b - cc + d) * tx * ty, wat = h < 0;
+      let row = Math.floor(HOR + (EZ - (wat ? 0 : h)) * FYY / t);
+      if (row >= ytop) continue;
+      if (row < 0) row = 0;
+      let kind = c.kind[k]; if (wat) kind = WATER; else if (kind === WATER) kind = SAND;
+      let fq = FC / t; const rnd = fq > 1.4 ? (hash2(Math.floor(wx * (fq = fq > 5.6 ? 8 : fq > 2.8 ? 4 : 2)), Math.floor(wy * fq), 31) * 256) | 0 : c.rnd[k];
+      const px = wx - P.x, py = wy - P.y, d2 = px * px + py * py, sh = c.shade[k];
+      let L = AMB * sh * (0.95 + (c.rnd[k] & 15) * 0.007);
+      if (NIGHT > 0.05 && d2 < 144) L += NIGHT * (1 - Math.sqrt(d2) / 12) * 0.75;
+      const f = t > FOG0 ? Math.min(1, (t - FOG0) / (FAR - FOG0)) : 0;
+      let base = KBG[kind], ch, fgk;
+      if (wat) {
+        const dp = Math.min(1, -h / 9); tmp[0] = 58 - 34 * dp; tmp[1] = 132 - 66 * dp; tmp[2] = 184 - 50 * dp; base = tmp;
+        L = AMB * (0.95 + 0.08 * Math.sin(wx * 0.7 + wy * 0.5 + gameT * 1.5)) + (L - AMB * sh) * 0.6;
+        ch = WCH.charCodeAt((((Math.floor(wx * 2) * 3 + Math.floor(wy * 2) * 5 + wt) % 6) + 6) % 6);
+        tmp2[0] = base[0] + 70; tmp2[1] = base[1] + 70; tmp2[2] = base[2] + 60; fgk = shade(tmp2, L, f);
+      } else {
+        const set = KCH[kind]; ch = set.charCodeAt(rnd % set.length);
+        if (kind === FLOWER && rnd < (fq > 1.4 ? 34 : 70)) { ch = rnd & 1 ? 42 : 111; fgk = shade(FLW[(rnd >> 1) & 3], Math.max(L, 0.55), f); }
+        else { const m = kind === SNOW || kind === SAND ? 0.72 : 1.42; tmp2[0] = base[0] * m; tmp2[1] = base[1] * m; tmp2[2] = base[2] * m; fgk = shade(tmp2, L, f); }
+      }
+      const bgk = shade(base, L, f);
+      for (let r = row, i = row * W + cx; r < ytop; r++, i += W) { chB[i] = ch; fgB[i] = fgk; bgB[i] = bgk; dpB[i] = t; }
+      ytop = row;
+    }
+    for (let r = 0; r < ytop; r++) {
+      const i = r * W + cx, g = r < hr ? 0.62 + 0.38 * r / Math.max(1, hr) : 1, st = hash2(cx, r, 9);
+      bgB[i] = ((SR * g) >> 3) << 10 | ((SG * g) >> 3) << 5 | ((SB * g > 255 ? 255 : SB * g) >> 3);
+      dpB[i] = 1e9; chB[i] = 32;
+      if (NIGHT > 0.5 && st < 0.03) { chB[i] = st < 0.008 ? 42 : 46; fgB[i] = Math.sin(gameT * 2 + cx) > -0.6 ? 0x7fff : 0x4e73; }
+    }
+  }
+  // objects
+  const c0x = Math.floor(EX - FAR) >> 5, c1x = Math.floor(EX + FAR) >> 5, c0y = Math.floor(EY - FAR) >> 5, c1y = Math.floor(EY + FAR) >> 5;
+  for (let cy = c0y; cy <= c1y; cy++) for (let cx = c0x; cx <= c1x; cx++) {
+    const ds = chunkAt(cx, cy).decos;
+    for (let i = 0; i < ds.length; i++) { const d = ds[i]; drawModel(d.t === D_BUSH ? ((picked.get(d.key) || 0) > gameT ? MODELS.bush : MODELS.bushB) : MODELS[d.t], d.x, d.y, d.z - 0.1, d.r * 6.283, 0.85 + d.r * 0.5, false); }
+  }
+  for (const c of creatures) {
+    drawModel(c.s.fly && Math.sin(gameT * 12 + c.ph) > 0 ? c.s.model2 : c.s.model, c.x, c.y, c.z, c.dir, 1, !!c.s.glow);
+    if (c.follow) drawPoint(c.x, c.y, c.z + 1.9, 0x2665, [255, 110, 150], 50, 1);
+    else if (!c.met && !dex.has(c.s.id)) drawPoint(c.x, c.y, c.z + 1.9, 63, [255, 230, 100], 50, 1);
+  }
+  const hop = P.moving && P.ground && kindAt(P.x, P.y) !== WATER ? Math.abs(Math.sin(gameT * 11)) * 0.45 : 0;
+  drawModel(MODELS.player, P.x, P.y, P.z + hop, P.dir, 1, false);
+  for (const p of parts) drawPoint(p.x, p.y, p.z, p.ch.charCodeAt(0), p.col, 1, 1);
+  if (started) minimap();
+  flush();
+}
+const MCOL = [[40, 100, 170], [200, 180, 120], [70, 140, 60], [150, 130, 190], [30, 86, 48], [120, 114, 110], [230, 236, 244]];
+function put(c, r, ch, fg, bg) { if (c < 0 || r < 0 || c >= cols || r >= rows) return; const i = r * cols + c; chB[i] = ch; fgB[i] = fg; bgB[i] = bg; }
+function minimap() {
+  const big = canvas.clientWidth >= 700, mw = big ? 31 : 21, mh = big ? 15 : 9, c0 = cols - mw - 2, r0 = big ? 1 : Math.ceil(84 / chh), bd = 0x2d3c, bk = 0x0443;
+  for (let r = -1; r <= mh; r++) for (let c = -1; c <= mw; c++) {
+    if (r < 0 || r === mh || c < 0 || c === mw) { put(c0 + c, r0 + r, (r < 0 || r === mh) ? (c < 0 || c === mw ? 43 : 45) : 124, bd, bk); continue; }
+    const k = kindAt(P.x + (c - (mw >> 1)) * 3, P.y - (r - (mh >> 1)) * 6), col = MCOL[k];
+    put(c0 + c, r0 + r, 32, 0, (col[0] >> 3) << 10 | (col[1] >> 3) << 5 | (col[2] >> 3));
+  }
+  put(c0 + (mw >> 1), r0 - 1, 78, 0x7f6c, bk);
+  for (const c of creatures) {
+    const mc = Math.round((c.x - P.x) / 3) + (mw >> 1), mr = Math.round(-(c.y - P.y) / 6) + (mh >> 1);
+    if (mc < 0 || mr < 0 || mc >= mw || mr >= mh || c.follow) continue;
+    const i = (r0 + mr) * cols + c0 + mc; chB[i] = c.met ? 46 : dex.has(c.s.id) ? 111 : 63; fgB[i] = c.met ? 0x7fff : (c.s.c[0] >> 3) << 10 | (c.s.c[1] >> 3) << 5 | (c.s.c[2] >> 3); bgB[i] = bk;
+  }
+  put(c0 + (mw >> 1), r0 + (mh >> 1), Math.abs(FWY) > Math.abs(FWX) ? (FWY > 0 ? 94 : 118) : (FWX > 0 ? 62 : 60), 0x7f6c, bk);
+}
+function flush() {
+  const W = cols, H = rows;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  for (let r = 0; r < H; r++) {
+    const y = r * chh; let st = 0, cur = bgB[r * W];
+    for (let c = 1; c <= W; c++) { const b = c < W ? bgB[r * W + c] : -1; if (b !== cur) { ctx.fillStyle = cs(cur); ctx.fillRect(st * cw, y, (c - st) * cw + 0.6, chh + 0.6); st = c; cur = b; } }
+  }
+  ctx.font = '700 ' + fontPx.toFixed(2) + 'px "JetBrains Mono","DejaVu Sans Mono",Menlo,Consolas,monospace';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  let last = -1;
+  for (let r = 0, i = 0; r < H; r++) {
+    const y = r * chh + chh * 0.54;
+    for (let c = 0; c < W; c++, i++) { const ch = chB[i]; if (ch === 32) continue; if (fgB[i] !== last) { last = fgB[i]; ctx.fillStyle = cs(last); } ctx.fillText(chStr[ch] || (chStr[ch] = String.fromCharCode(ch)), c * cw + cw / 2, y); }
+  }
+}
+
+/* ---------- HUD ---------- */
+const elF = $('sFriends').lastElementChild, elB = $('sBerry').lastElementChild, elT = $('sTime').lastElementChild, elK = $('sBiome'), elP = $('prompt'), elToast = $('toast');
+let toastT = 0, hudT = 0, lastPrompt = '';
+function toast(msg, ms) { elToast.textContent = msg; elToast.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { elToast.hidden = true; }, ms || 3200); }
+function hud() {
+  elF.textContent = dex.size + '/8'; elB.textContent = berries;
+  const m = Math.floor(clock * 1440); elT.textContent = String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60 - m % 10).padStart(2, '0') + (isNight() ? ' 밤' : ' 낮');
+  elK.textContent = KNAME[kindAt(P.x, P.y)];
+  const p = !target ? '' : target.type === 'bush' ? '열매 따기' : target.c.s.name + '에게 열매 주기';
+  if (p !== lastPrompt) { lastPrompt = p; elP.hidden = !p; elP.innerHTML = p ? '<kbd>F</kbd>' + p : ''; }
+}
+function renderDex() {
+  $('dexCount').textContent = dex.size + '/8';
+  $('dexGrid').innerHTML = SPECIES.map(s => {
+    const k = dex.has(s.id);
+    return '<div class="mon ' + (k ? 'known' : 'unknown') + '"><pre style="color:rgb(' + s.c.join(',') + ')">' + s.rows.join('\n').replace(/</g, '&lt;') + '</pre><div class="n">' + (k ? s.name : '???') + '</div><div class="h">' + s.hint + '</div></div>';
+  }).join('');
+}
+function toggleDex(force) { const d = $('dex'); d.hidden = force === undefined ? !d.hidden : !force; if (!d.hidden) renderDex(); }
+
+/* ---------- input ---------- */
+addEventListener('keydown', e => {
+  if (e.code === 'Tab') { e.preventDefault(); if (started) toggleDex(); return; }
+  if (e.code === 'Escape') { toggleDex(false); return; }
+  if (!started) { if (e.code === 'Enter') start(); return; }
+  if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
+  if (e.code === 'BracketLeft' || e.code === 'BracketRight') { cellPx = Math.max(4, Math.min(10, cellPx + (e.code === 'BracketLeft' ? 0.75 : -0.75))); resize(); toast('글자 크기 ' + cellPx.toFixed(2) + 'px (가로 ' + cols + '칸)'); return; }
+  if (!e.repeat) { if (e.code === 'KeyF') interact(); if (e.code === 'KeyX') sparkle(); }
+  keys.add(e.code);
+});
+addEventListener('keyup', e => keys.delete(e.code));
+addEventListener('blur', () => keys.clear());
+let joyId = -1, joyOx = 0, joyOy = 0, dragId = -1, dragX = 0, dragY = 0;
+const stick = $('stick');
+canvas.addEventListener('pointerdown', e => {
+  if (!started) return; canvas.setPointerCapture(e.pointerId);
+  if (e.pointerType === 'touch' && e.clientX < innerWidth * 0.5 && joyId < 0) {
+    joyId = e.pointerId; joyOx = e.clientX; joyOy = e.clientY; stick.hidden = false; stick.style.left = (joyOx - 55) + 'px'; stick.style.top = (joyOy - 55) + 'px'; stick.firstElementChild.style.transform = '';
+  } else if (dragId < 0) { dragId = e.pointerId; dragX = e.clientX; dragY = e.clientY; }
+});
+canvas.addEventListener('pointermove', e => {
+  if (e.pointerId === joyId) {
+    let dx = (e.clientX - joyOx) / 50, dy = (e.clientY - joyOy) / 50; const l = Math.hypot(dx, dy); if (l > 1) { dx /= l; dy /= l; }
+    joyX = dx; joyY = -dy; stick.firstElementChild.style.transform = 'translate(' + dx * 40 + 'px,' + dy * 40 + 'px)';
+  } else if (e.pointerId === dragId) { yaw += (e.clientX - dragX) * 0.007; camH = Math.max(1.6, Math.min(12, camH + (e.clientY - dragY) * 0.03)); dragX = e.clientX; dragY = e.clientY; }
+});
+canvas.addEventListener('wheel', e => { e.preventDefault(); DIST = Math.max(5, Math.min(24, DIST + Math.sign(e.deltaY) * 1.2)); }, { passive: false });
+const pend = e => { if (e.pointerId === joyId) { joyId = -1; joyX = joyY = 0; stick.hidden = true; } if (e.pointerId === dragId) dragId = -1; };
+canvas.addEventListener('pointerup', pend); canvas.addEventListener('pointercancel', pend);
+document.querySelectorAll('#pad button').forEach(b => {
+  const k = b.dataset.key;
+  b.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    if (k === 'KeyF') interact(); else if (k === 'KeyX') sparkle();
+    else if (k === 'ShiftLeft') { keys.has(k) ? keys.delete(k) : keys.add(k); b.classList.toggle('on', keys.has(k)); }
+    else keys.add(k);
+  });
+  if (k === 'Space') { b.addEventListener('pointerup', () => keys.delete(k)); b.addEventListener('pointerleave', () => keys.delete(k)); }
+});
+$('btnDex').onclick = () => toggleDex(); $('btnDexClose').onclick = () => toggleDex(false);
+$('btnSound').onclick = e => { soundOn = !soundOn; e.target.textContent = soundOn ? '소리 켜짐' : '소리 꺼짐'; e.target.blur(); };
+$('btnStart').onclick = start;
+$('btnReset').onclick = () => { try { localStorage.removeItem(SAVE); } catch (e) {} dex.clear(); creatures.length = 0; berries = 0; P.x = P.y = 0.5; clock = 0.33; yaw = 0.6; start(); };
+function start() {
+  if (started) return; started = true;
+  try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+  $('title').hidden = true; $('top').hidden = false; $('bottom').hidden = false; $('pad').hidden = false;
+  camx = P.x; camy = P.y; P.z = camz = groundAt(P.x, P.y);
+  toast(dex.size ? '다시 오셨네요. 동산은 그대로예요.' : '덤불 (o%o) 을 찾아 F로 열매를 따 보세요.', 5000);
+  jingle([392, 523, 659]);
+}
+
+/* ---------- loop ---------- */
+let lastT = 0, saveT = 0;
+function frame(t) {
+  const dt = Math.min(0.05, (t - lastT) / 1000 || 0.016); lastT = t;
+  if (started) { if ($('dex').hidden) update(dt); if ((hudT -= dt) < 0) { hudT = 0.15; hud(); } if ((saveT += dt) > 5) { saveT = 0; save(); } }
+  else { gameT += dt; yaw += dt * 0.07; camx = P.x; camy = P.y; camz = groundAt(P.x, P.y); P.z = camz; }
+  const t0 = performance.now(); render(); window.__garden.ft = window.__garden.ft * 0.9 + (performance.now() - t0) * 0.1;
+  requestAnimationFrame(frame);
+}
+if (load()) { $('btnReset').hidden = false; $('btnStart').textContent = '이어서 하기'; }
+resize(); addEventListener('resize', resize);
+if (document.fonts && document.fonts.load) document.fonts.load('700 16px "JetBrains Mono"').then(resize, () => {});
+window.__garden = { ft: 0,  P, creatures, dex, kindAt, SPECIES, set clock(v) { clock = v; }, give(n) { berries += n; } };
+requestAnimationFrame(frame);
+})();
+</script>
