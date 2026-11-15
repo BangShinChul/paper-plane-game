@@ -17,6 +17,7 @@ body { background: #cfe0f7; color: var(--ink); font-family: var(--text); overflo
 #c { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .gut { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 #steps { position: absolute; top: 8px; left: 0; right: 0; display: flex; gap: 6px; justify-content: center; pointer-events: none; font: 700 18px var(--hand); }
+#bLang { position: absolute; top: 6px; right: max(8px, env(safe-area-inset-right, 0px)); z-index: 6; padding: 4px 8px; font: 700 12px var(--text); box-shadow: 1px 1px 0 var(--ink); min-width: 38px; }
 #steps span { background: var(--paper); border: 1.5px solid var(--rule); padding: 1px 10px; color: var(--dim); }
 #steps span.on { background: var(--mark); border-color: var(--ink); color: var(--ink); }
 .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--paper); border-top: 2px solid var(--ink); padding-block: 10px;
@@ -85,7 +86,8 @@ button.pri { background: var(--blue); color: #fff; } button.on { background: var
 #c { touch-action: none; }
 #toast { position: absolute; top: 44%; left: 50%; transform: translate(-50%, -50%); background: var(--paper); border: 2px solid var(--ink); padding: 4px 14px; font: 700 20px var(--hand); pointer-events: none; text-align: center; max-width: 86%; }
 .overlay { position: absolute; inset: 0; display: flex; background: rgba(23, 38, 77, .55); overflow-y: auto; padding-block: 20px; }
-.card { background: var(--paper); border: 2px solid var(--ink); box-shadow: 6px 6px 0 var(--ink); padding: 20px; max-width: 460px; width: 100%; margin: auto; }
+.card { box-sizing: border-box; background: var(--paper); border: 2px solid var(--ink); box-shadow: 6px 6px 0 var(--ink); padding: 20px; max-width: 460px; width: 100%; margin: auto; }
+.pop { box-sizing: border-box; }
 .card h2 { font: 700 34px/1.1 var(--hand); margin: 0 0 4px; text-wrap: balance; } .card .big { font: 700 64px/1 var(--hand); color: var(--blue); font-variant-numeric: tabular-nums; }
 .card p { margin: 6px 0; font-size: 14px; line-height: 1.6; } .card .dim { color: var(--dim); font-size: 13px; }
 #lb { list-style: none; margin: 10px 0; padding: 0; border-top: 1.5px solid var(--ink); } #lb li { display: grid; grid-template-columns: 26px 1fr auto auto; gap: 10px; padding: 5px 2px; border-bottom: 1px solid var(--rule); font-size: 14px; font-variant-numeric: tabular-nums; }
@@ -95,6 +97,7 @@ button.pri { background: var(--blue); color: #fff; } button.on { background: var
 
 <div id="app">
   <canvas id="c" aria-label="게임 화면"></canvas>
+  <button id="bLang" type="button" data-raw>EN</button>
   <div id="steps"><span data-s="fold" class="on">1 접기</span><span data-s="shape">2 모양 잡기</span><span data-s="fly">3 날리기</span></div>
 
   <div class="sheet gut" id="foldUI">
@@ -504,7 +507,7 @@ function loadPlane(it) {
 function hangarUI() {
   const list = hangar(), host = $('hList'); host.innerHTML = list.length ? '' : '<div class="empty">저장한 비행기가 없습니다. 접은 뒤 위의 버튼으로 저장해 보세요.</div>';
   list.forEach(it => { const d = document.createElement('div'); d.className = 'it'; const folds = it.ops.filter(o => !o.flip).length, day = new Date(it.at);
-    d.innerHTML = (it.img ? '<img alt="" src="' + it.img + '">' : '<span></span>') + '<div style="min-width:0"><div class="nm"></div><div class="dt">접기 ' + folds + '번 · ' + (day.getMonth() + 1) + '/' + day.getDate() + '</div></div><div class="acts"><button type="button" class="pri">불러오기</button><button type="button">삭제</button></div>';
+    d.innerHTML = (it.img ? '<img alt="" src="' + it.img + '">' : '<span></span>') + '<div style="min-width:0"><div class="nm" data-raw></div><div class="dt">접기 ' + folds + '번 · ' + (day.getMonth() + 1) + '/' + day.getDate() + '</div></div><div class="acts"><button type="button" class="pri">불러오기</button><button type="button">삭제</button></div>';
     d.querySelector('.nm').textContent = it.name; const [bl, bd] = d.querySelectorAll('button'); bl.onclick = () => loadPlane(it);
     bd.onclick = () => { if (bd.dataset.sure) { hangarPut(hangar().filter(x => x.id !== it.id)); hangarUI(); } else { bd.dataset.sure = 1; bd.textContent = '정말 삭제?'; setTimeout(() => { delete bd.dataset.sure; bd.textContent = '삭제'; }, 2500); } };
     host.appendChild(d); });
@@ -703,7 +706,7 @@ function endFlight(why) {
 }
 const LBK = 'paper-plane-board-v1';
 const board = () => { try { return JSON.parse(localStorage.getItem(LBK)) || []; } catch (e) { return []; } };
-function showBoard(me) { const b = board(); $('lb').innerHTML = b.length ? b.map((r, i) => '<li class="' + (i === me ? 'me' : '') + '"><span>' + (i + 1) + '</span><span>' + r.n.replace(/[<&>]/g, '') + '</span><b>' + r.d.toFixed(1) + ' m</b><span class="t">' + r.t.toFixed(1) + '초</span></li>').join('') : '<li><span></span><span>아직 기록이 없습니다</span><span></span><span></span></li>'; }
+function showBoard(me) { const b = board(); $('lb').innerHTML = b.length ? b.map((r, i) => '<li class="' + (i === me ? 'me' : '') + '"><span>' + (i + 1) + '</span><span data-raw>' + r.n.replace(/[<&>]/g, '') + '</span><b>' + r.d.toFixed(1) + ' m</b><span class="t">' + r.t.toFixed(1) + '초</span></li>').join('') : '<li><span></span><span>아직 기록이 없습니다</span><span></span><span></span></li>'; }
 $('bSave').onclick = () => { const b = board(), rec = { n: ($('pname').value || '플레이어').slice(0, 12), d: Fl.dist, t: Fl.t, at: Date.now() }; b.push(rec); b.sort((x, y) => y.d - x.d); b.length = Math.min(b.length, 10); try { localStorage.setItem(LBK, JSON.stringify(b)); } catch (e) {} showBoard(b.indexOf(rec)); $('bSave').disabled = true; };
 $('bToFly').onclick = $('bAgain').onclick = () => { if (mode !== 'shape') { mode = 'shape'; refresh(); } setMode('aim'); resetFlight(); };
 
@@ -913,9 +916,68 @@ function frame(t) {
 }
 function resize() { const w = canvas.clientWidth, h = canvas.clientHeight; renderer.setSize(w, h, false); camB.aspect = w / h; camB.fov = w < h ? 78 : 62; camB.updateProjectionMatrix(); setCam(); }
 addEventListener('resize', resize);
-window.__pp = { force: null, AU, sparks, knock, ring, spark, popUp, get quality() { return quality; }, hangar, control, W0, paper, applyPaper, vo, ctl, dodge, get calls() { return renderer.info.render.calls; }, get trail() { return trail; }, get events() { return events; }, get ops() { return ops; }, set ops(v) { ops = v; refresh(); }, get aero() { return aero; }, Fl, launch, build, analyze, setMode, PRESET, get cur() { return cur; }, get mode() { return mode; }, physics };
+window.__pp = { force: null, setLang, L, get lang() { return lang; }, AU, sparks, knock, ring, spark, popUp, get quality() { return quality; }, hangar, control, W0, paper, applyPaper, vo, ctl, dodge, get calls() { return renderer.info.render.calls; }, get trail() { return trail; }, get events() { return events; }, get ops() { return ops; }, set ops(v) { ops = v; refresh(); }, get aero() { return aero; }, Fl, launch, build, analyze, setMode, PRESET, get cur() { return cur; }, get mode() { return mode; }, physics };
+/* ---- language: Korean source text is translated on its way to the screen, so every label, toast and readout switches at once ---- */
+const I18N = {
+  '1 접기': '1 Fold', '2 모양 잡기': '2 Shape', '3 날리기': '3 Fly', '게임 화면': 'Game view',
+  '모서리나 종이 위를 잡고 끌면 접힙니다. 두 손가락으로 끌면 종이가 움직이고, 벌리면 확대됩니다.': 'Grab a corner or the paper and drag to fold. Drag with two fingers to move the paper, pinch to zoom.',
+  '안내판 접기 ▾': 'Hide panel ▾', '안내판 펼치기 ▴': 'Show panel ▴', '되돌리기': 'Undo', '펼치기 (자국 남김)': 'Unfold (keep crease)', '뒤집기': 'Flip over',
+  '겹: 잡은 겹만': 'Layers: grabbed', '겹: 모든 겹 함께': 'Layers: all', '스냅 켬': 'Snap on', '스냅 끔': 'Snap off', '보관함 (저장·불러오기)': 'Hangar (save · load)',
+  '종이 꾸미기': 'Paper style', '랜덤 종이': 'Random paper', '화면 맞춤': 'Fit view', '소리 켬': 'Sound on', '소리 끔': 'Sound off', '새 종이': 'New sheet',
+  '예시: 다트': 'Example: dart', '예시: 글라이더': 'Example: glider', '다음: 모양 잡기': 'Next: shape',
+  '접은 곳을 얼마나 세울지 정하고, 비행기를 눌러 잡을 곳을 찍으세요. 끌면 돌려 볼 수 있어요.': 'Set how far each fold opens, and tap the plane to mark where you hold it. Drag to look around.',
+  '왼쪽 뒤끝 휘기': 'Left trim', '오른쪽 뒤끝 휘기': 'Right trim', '왼쪽 날개 뒤끝 휘기': 'Left wing trailing-edge bend', '오른쪽 날개 뒤끝 휘기': 'Right wing trailing-edge bend',
+  '날개 자동 펴기': 'Spread wings', '뒤끝 자동 맞춤': 'Auto trim', '앞 방향 돌리기': 'Turn front', '위아래 바꾸기': 'Flip up/down', '보관함에 저장': 'Save to hangar', '다시 접기': 'Fold again', '날리러 가기': 'Go fly',
+  '날개 면적': 'Wing area', '· 날개 폭': '· Span', '· 날개 면적': '· Wing area', '앞뒤 안정성': 'Pitch stability', '좌우 균형': 'Balance', '예상 활공비': 'Glide ratio', '· 순항 속도': '· Cruise',
+  '좋음': 'good', '알맞음': 'good', '뒤끝 휘기': 'Trim', '한쪽으로 돌아요': 'turns to one side',
+  '뒤가 너무 무거움 · 뒤집히며 떨어져요': 'Far too tail-heavy · tumbles down', '뒤가 무거움 · 고개를 들다 실속해 뚝 떨어져요': 'Tail-heavy · pitches up, stalls and drops',
+  '아슬아슬 · 고개를 들다 실속하기 쉬워요': 'Marginal · stalls easily', '머리가 무거움 · 빨리 떨어져요': 'Nose-heavy · comes down fast',
+  '뒤끝을 너무 올렸어요 · 고개를 들다 실속해 멀리 못 가요': 'Too much up-trim · it stalls and falls short', '뒤끝을 더 올리면 덜 내리꽂아요': 'More up-trim would stop the dive',
+  '노란 점 무게중심 · 빨간 점 잡는 곳 · 파란 화살표 앞': 'Yellow dot: centre of mass · red dot: grip · blue arrow: front',
+  '아래로 당겼다가 위로 빠르게 밀어 던지세요': 'Pull down, then flick up to throw', '던지는 각도': 'Throw angle', '당김': 'Pull',
+  '화면을 누른 채 끌면 좌우로, 아래로 끌면 내려가요': 'Hold and drag to slide left or right; drag down to dive', '회피': 'Dodge', '높이': 'Height', '확대': 'Zoom',
+  '바람 · 위쪽이 앞': 'Wind · up is forward', '바람 없음': 'calm', '뒷바람 (더 멀리)': 'tailwind (farther)', '맞바람 (덜 나감)': 'headwind (shorter)', '왼쪽에서 부는 옆바람': 'crosswind from the left', '오른쪽에서 부는 옆바람': 'crosswind from the right',
+  '착륙!': 'Landed!', '옥상에 떨어졌다': 'Dropped on the roof', '장애물에 걸렸다!': 'Hit an obstacle!', '체공 시간': 'Air time', '· 최고 높이': '· Max height',
+  '기록 저장': 'Save score', '이름': 'Name', '아직 기록이 없습니다': 'No scores yet', '기록은 이 브라우저에만 저장됩니다.': 'Scores are kept in this browser only.', '같은 비행기로 다시': 'Same plane again',
+  '앞면': 'Front', '뒷면': 'Back', '무늬': 'Pattern', '무지': 'Plain', '모눈': 'Grid', '줄무늬': 'Stripes', '물방울': 'Dots', '체크': 'Check', '별': 'Stars', '물결': 'Waves', '랜덤': 'Random', '앞뒤 바꾸기': 'Swap sides', '완료': 'Done',
+  '비행기 이름': 'Plane name', '저장할 비행기 이름': 'Name for the saved plane', '지금 비행기 저장': 'Save this plane', '닫기': 'Close', '불러오기': 'Load', '삭제': 'Delete', '정말 삭제?': 'Really delete?',
+  '저장한 비행기가 없습니다. 접은 뒤 위의 버튼으로 저장해 보세요.': 'No saved planes yet. Fold one and save it with the button above.', '먼저 종이를 한 번 이상 접어 주세요': 'Fold the paper at least once first',
+  '저장 공간이 부족해요. 오래된 비행기를 지워 주세요': 'Storage is full. Delete some older planes',
+  '종이 위나 모서리 가까이를 잡아 주세요': 'Grab the paper or near a corner', '이 방향으로는 접을 수 없어요. 종이 안쪽으로 끌어 보세요': 'It cannot fold that way. Drag toward the inside of the paper',
+  '펼쳤어요. 접은 자국이 남았습니다': 'Unfolded. The crease stays', '다트를 접었어요. 되돌리기로 한 단계씩 볼 수 있어요': 'Dart folded. Use Undo to step back through it', '글라이더를 접었어요': 'Glider folded',
+  '180°는 완전히 접힌 상태예요. 날개가 될 접기를 90°쯤으로 세워 보세요': '180° is fully folded. Open the wing folds to about 90°', '여기를 잡고 던집니다': 'You will hold it here',
+  '뒤가 무거워서 뒤끝으로는 맞출 수 없어요. 앞쪽을 더 접어 무겁게 해 보세요': 'Too tail-heavy for trim to fix. Fold more paper toward the front',
+  '아래로 당겼다가 위로 빠르게 밀어 주세요': 'Pull down, then flick up quickly', '잡은 곳이 무게중심에서 멀어 힘이 덜 실렸어요': 'Your grip is far from the centre of mass, so the throw was weaker',
+  '새 떼가 가로질러 옵니다! 아래로 내려가 피하세요': 'Birds crossing! Dive under them', '새와 부딪혔다! 빙글빙글': 'Hit a bird! Spinning', '어질어질': 'Dizzy',
+  '돌풍! 왼쪽으로 버티세요': 'Gust! Hold left', '돌풍! 오른쪽으로 버티세요': 'Gust! Hold right', '돌풍': 'Gust',
+  '여객기가 지나갑니다! 아래로 내려가 뒷바람을 피하세요': 'Airliner passing! Dive below its wake', '여객기 뒷바람에 휘말려 곤두박질!': 'Caught in the jet wake!', '난기류': 'Turbulence',
+  '비둘기가 머리 위에! 옆으로 계속 움직이세요': 'Pigeon overhead! Keep moving sideways', '철퍽! 새똥에 맞아 비행기가 무거워졌다': 'Splat! Droppings made the plane heavier',
+  '외계인이 도와줍니다! 초록 광선 안에 머무르세요': 'A friendly alien! Stay inside the green beam', '둥실! 외계인이 끌어올려 줍니다': 'Whee! The alien is lifting you', '외계인 광선 · 떠오르는 중': 'Alien beam · rising', '광선을 놓쳤다': 'Missed the beam',
+  '외계인에게 끌려갔다가 내동댕이쳐졌다!': 'Abducted and thrown back!', '그을림 · 날개 구멍': 'Scorched · hole in wing',
+  '뒤에서 영웅이 날아옵니다! 옆으로 비켜 주세요': 'A hero is coming from behind! Move aside', '영웅의 충격파에 빙글빙글 날아갔다!': "Blown away by the hero's shockwave!", '영웅이 옆을 스쳐 지나갔다': 'The hero shot past', '충격파': 'Shockwave',
+  '먹구름! 비 기둥을 옆으로 돌아가세요': 'Storm cloud! Go around the rain', '번쩍! 번개에 맞았다': 'Flash! Struck by lightning', '번개에 그을림': 'Lightning scorch', '상승기류': 'Updraft',
+  '최고 기록 돌파!': 'New best!', '플레이어': 'Player', '비행기': 'Plane', '각도': 'angle', '평평': 'Flat'
+};
+const I18R = [
+  [/뒤끝을 위 (\d+)\(으\)로 맞췄어요/, 'Trim set to Up $1'], [/뒤끝을 아래 (\d+)\(으\)로 맞췄어요/, 'Trim set to Down $1'], [/뒤끝을 평평\(으\)로 맞췄어요/, 'Trim set to Flat'],
+  [/“(.*)” 저장했어요/, 'Saved “$1”'], [/“(.*)” 불러왔어요/, 'Loaded “$1”'], [/외계인이 손을 흔들며 떠났다 \(\+(\d+) m\)/, 'The alien waved goodbye (+$1 m)'],
+  [/접기 (\d+)번 · /, '$1 folds · '], [/접기 (\d+) 각도/, 'Fold $1 angle'], [/^접기 (\d+)$/, 'Fold $1'], [/새똥 ×(\d+) · 무거움/, 'Droppings ×$1 · heavy'], [/젖음 \+(\d+)%/, 'Wet +$1%'],
+  [/오른쪽으로 기울어요/, 'leans right'], [/왼쪽으로 기울어요/, 'leans left'], [/^위 (\d+)$/, 'Up $1'], [/^아래 (\d+)$/, 'Down $1'], [/초 · 높이 /, ' s · height '], [/([\d.]+)초/g, '$1 s'], [/^(앞면|뒷면) (#[0-9a-f]+)$/, (m, a, c) => (a === '앞면' ? 'Front ' : 'Back ') + c]
+];
+let lang = 'ko'; try { if (localStorage.getItem('paper-plane-lang') === 'en') lang = 'en'; } catch (e) {}
+const HAN = /[가-힣]/, I18K = Object.keys(I18N).sort((a, b) => b.length - a.length);
+function L(s) { if (lang === 'ko' || !HAN.test(s)) return s; const t = s.trim(); if (I18N[t] !== undefined) return s.replace(t, I18N[t]); let o = s; for (const [r, v] of I18R) o = o.replace(r, v); if (HAN.test(o)) for (const k of I18K) if (o.includes(k)) o = o.split(k).join(I18N[k]); return o; }
+function trNode(n) {
+  if (n.nodeType === 3) { const p = n.parentNode; if (!p || p.nodeType !== 1 || p.closest('[data-raw],script,style')) return; if (n.__out === undefined || n.nodeValue !== n.__out) n.__ko = n.nodeValue; const o = L(n.__ko); n.__out = o; if (o !== n.nodeValue) n.nodeValue = o; }
+  else if (n.nodeType === 1) { if (n.tagName === 'SCRIPT' || n.tagName === 'STYLE' || n.closest('[data-raw]')) return;
+    for (const a of ['aria-label', 'placeholder']) if (n.hasAttribute(a)) { const v = n.getAttribute(a); if (n['__o' + a] === undefined || v !== n['__o' + a]) n['__k' + a] = v; const o = L(n['__k' + a]); n['__o' + a] = o; if (o !== v) n.setAttribute(a, o); }
+    for (const c of n.childNodes) trNode(c); }
+}
+function setLang(l) { lang = l; try { localStorage.setItem('paper-plane-lang', l); } catch (e) {} document.documentElement.lang = l; trNode($('app')); $('bLang').textContent = l === 'ko' ? 'EN' : '한국어'; $('bLang').setAttribute('aria-label', l === 'ko' ? 'Switch to English' : '한국어로 바꾸기'); if (mode === 'fold' || mode === 'shape') setCam(); }
+new MutationObserver(ms => { for (const m of ms) { if (m.type === 'characterData') trNode(m.target); else m.addedNodes.forEach(trNode); } }).observe($('app'), { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['aria-label', 'placeholder'] });
+$('bLang').onclick = () => setLang(lang === 'ko' ? 'en' : 'ko');
 document.querySelectorAll('.bSound').forEach(b => { b.textContent = AU.on ? '소리 켬' : '소리 끔'; b.onclick = () => setSound(!AU.on); });
 document.addEventListener('click', e => { const b = e.target.closest('button'); if (b && !b.classList.contains('bSound')) sfx('click'); });
-applyPaper(); setMode('fold'); resize(); requestAnimationFrame(frame);
+applyPaper(); setMode('fold'); resize(); setLang(lang); requestAnimationFrame(frame);
 })();
 </script>
