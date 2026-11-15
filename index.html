@@ -63,6 +63,10 @@ button.pri { background: var(--blue); color: #fff; } button.on { background: var
 #stick i { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px; border-radius: 50%; background: var(--mark); border: 2px solid var(--ink); }
 #wind { position: absolute; top: 44px; right: max(12px, env(safe-area-inset-right, 0px)); display: flex; gap: 8px; align-items: center; background: var(--paper); border: 1.5px solid var(--ink); padding: 4px 10px 4px 6px; font-size: 13px; pointer-events: none; }
 #wind .k { display: block; font-size: 11px; color: var(--dim); } #wind b { font-variant-numeric: tabular-nums; }
+#vig { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(12, 24, 56, 0.34) 100%); }
+#pop { position: absolute; left: 50%; top: 22%; transform: translate(-50%, 0); font: 700 38px var(--hand); color: #fff; text-shadow: 0 3px 0 var(--ink), 0 0 18px rgba(255, 216, 74, .9); pointer-events: none; white-space: nowrap; opacity: 0; }
+#pop.big { font-size: 46px; color: var(--mark); } #pop.go { animation: rise 1.3s ease-out forwards; } #pop.big.go { animation-duration: 2.2s; }
+@keyframes rise { 0% { opacity: 0; transform: translate(-50%, 20px) scale(.6); } 15% { opacity: 1; transform: translate(-50%, 0) scale(1.15); } 30% { transform: translate(-50%, 0) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -26px) scale(1); } }
 #flash { position: absolute; inset: 0; pointer-events: none; opacity: 0; }
 #splat { position: absolute; inset: 0; pointer-events: none; overflow: hidden; } #splat i { position: absolute; background: radial-gradient(circle at 40% 35%, #fff 0 45%, #e9e6d2 70%, #cfcbb4 100%); box-shadow: 0 6px 0 -2px #d8d4bd; animation: drip 4.2s ease-in forwards; }
 @keyframes drip { 0% { transform: scale(.2); opacity: 1; } 8% { transform: scale(1.1); } 12% { transform: scale(1); } 60% { opacity: .95; transform: translateY(30px) scaleY(1.25); } 100% { opacity: 0; transform: translateY(160px) scaleY(1.7); } }
@@ -106,6 +110,7 @@ button.pri { background: var(--blue); color: #fff; } button.on { background: var
       <button id="bStyle" type="button">종이 꾸미기</button>
       <button id="bRandom" type="button">랜덤 종이</button>
       <button id="bFit" type="button">화면 맞춤</button>
+      <button class="bSound" type="button">소리 켬</button>
       <button id="bReset" type="button">새 종이</button>
       <button id="bDart" type="button">예시: 다트</button>
       <button id="bGlider" type="button">예시: 글라이더</button>
@@ -155,12 +160,12 @@ button.pri { background: var(--blue); color: #fff; } button.on { background: var
 
   <div id="hud" hidden><div id="dist">0.0 m</div><div id="sub"></div><div id="chips"></div></div>
   <div id="alt" hidden><i id="altFill"></i><span>높이</span></div>
-  <div id="flash"></div><div id="splat"></div>
+  <div id="vig" hidden></div><div id="flash"></div><div id="splat"></div><div id="pop" hidden></div>
   <div id="banner" hidden></div>
   <div id="wind" hidden><svg id="windArrow" viewBox="0 0 24 24" width="34" height="34" aria-hidden="true"><path d="M12 2 L19 12 H14.5 V22 H9.5 V12 H5 Z" fill="#2456d6" stroke="#17264d" stroke-width="1.5" stroke-linejoin="round"/></svg><div><span class="k">바람 (위쪽이 앞) · 계속 바뀝니다</span><span id="windTxt"></span></div></div>
   <div id="aim" class="gut" hidden>
     <p class="hint">아래로 당겼다가 위로 빠르게 밀어 던지세요</p>
-    <div class="row"><label for="ang">던지는 각도</label><input id="ang" type="range" min="-5" max="40" value="10"><b id="angV">10°</b><span>당김</span><div id="pow"><i id="powFill"></i></div><button id="bRefold" type="button">다시 접기</button></div>
+    <div class="row"><label for="ang">던지는 각도</label><input id="ang" type="range" min="-5" max="40" value="10"><b id="angV">10°</b><span>당김</span><div id="pow"><i id="powFill"></i></div><button class="bSound" type="button">소리 켬</button><button id="bRefold" type="button">다시 접기</button></div>
   </div>
   <div id="steer" hidden>화면을 누른 채 끌면 좌우로, 아래로 끌면 내려가요</div>
   <button id="bDash" type="button" hidden><b>회피</b><i id="dashFill"></i></button>
@@ -272,7 +277,8 @@ try { Object.assign(paper, JSON.parse(localStorage.getItem('paper-plane-style-v1
 const texF = new T.CanvasTexture(Object.assign(document.createElement('canvas'), { width: 512, height: 512 })), texB = new T.CanvasTexture(Object.assign(document.createElement('canvas'), { width: 512, height: 512 }));
 function drawPaper(cv, base, pat) {
   const x = cv.getContext('2d'), n = parseInt(base.slice(1), 16), lum = ((n >> 16) * 0.3 + ((n >> 8) & 255) * 0.59 + (n & 255) * 0.11) / 255, ink = lum > 0.6 ? 'rgba(23,38,77,.22)' : 'rgba(255,255,255,.34)';
-  x.fillStyle = base; x.fillRect(0, 0, 512, 512); x.fillStyle = x.strokeStyle = ink;
+  x.fillStyle = base; x.fillRect(0, 0, 512, 512); for (let i = 0; i < 2600; i++) { x.fillStyle = i % 2 ? 'rgba(255,255,255,.07)' : 'rgba(20,30,60,.05)'; x.fillRect(Math.random() * 512, Math.random() * 512, 1 + Math.random() * 2.5, 1); } for (let i = 0; i < 60; i++) { x.strokeStyle = 'rgba(20,30,60,.035)'; x.lineWidth = 1; const px = Math.random() * 512, py = Math.random() * 512, a = Math.random() * 6.283; x.beginPath(); x.moveTo(px, py); x.lineTo(px + Math.cos(a) * 14, py + Math.sin(a) * 14); x.stroke(); }
+  x.fillStyle = x.strokeStyle = ink;
   if (pat === 'grid') { x.lineWidth = 2; for (let i = 0; i <= 16; i++) { x.beginPath(); x.moveTo(i * 32, 0); x.lineTo(i * 32, 512); x.moveTo(0, i * 32); x.lineTo(512, i * 32); x.stroke(); } }
   else if (pat === 'stripe') { for (let i = -8; i < 16; i++) { x.beginPath(); x.moveTo(i * 64, 0); x.lineTo(i * 64 + 28, 0); x.lineTo(i * 64 + 28 + 512, 512); x.lineTo(i * 64 + 512, 512); x.fill(); } }
   else if (pat === 'dots') { for (let j = 0; j < 9; j++) for (let i = 0; i < 9; i++) { x.beginPath(); x.arc(i * 64 + (j % 2 ? 32 : 0), j * 64, 15, 0, 6.283); x.fill(); } }
@@ -440,7 +446,7 @@ canvas.addEventListener('pointermove', e => {
 });
 function pointerUp(e) {
   pts.delete(e.pointerId); panM = null; if (pts.size < 2) pinch = null;
-  if (mode === 'fold' && drag) { if (drag.id !== e.pointerId) return; if (drag.valid) { ops.push({ g: drag.g, t: drag.t, mode: foldMode, angle: 180 }); snd(520, 0.06, 'triangle', 0.05, 300); } else if (Math.hypot(drag.t[0] - drag.g[0], drag.t[1] - drag.g[1]) > 0.06) toast('이 방향으로는 접을 수 없어요. 종이 안쪽으로 끌어 보세요', 1800); drag = null; refresh(); }
+  if (mode === 'fold' && drag) { if (drag.id !== e.pointerId) return; if (drag.valid) { ops.push({ g: drag.g, t: drag.t, mode: foldMode, angle: 180 }); sfx('fold'); } else if (Math.hypot(drag.t[0] - drag.g[0], drag.t[1] - drag.g[1]) > 0.06) toast('이 방향으로는 접을 수 없어요. 종이 안쪽으로 끌어 보세요', 1800); drag = null; refresh(); }
   else if (mode === 'shape' && drag) { if (drag.moved < 8) { const { ray } = planePoint(e), hit = ray.intersectObject(meshF)[0] || ray.intersectObject(meshB)[0];
       if (hit) { const f = cur.faces[triMap[hit.faceIndex]], q = paperG.worldToLocal(hit.point.clone()).applyMatrix4(f.Q.clone().invert()); grip = ap(inv(f.m), [q.x, q.y]); showStats(); toast('여기를 잡고 던집니다'); } } drag = null; }
   else if (mode === 'aim') aimUp(e); else if (mode === 'fly') stickUp(e);
@@ -472,7 +478,7 @@ const PRESET = {
 $('bDart').onclick = () => { ops = PRESET.dart(); creases = []; grip = null; setBend(70); refresh(); toast('다트를 접었어요. 되돌리기로 한 단계씩 볼 수 있어요', 2600); };
 $('bGlider').onclick = () => { ops = PRESET.glider(); creases = []; grip = null; setBend(25); refresh(); toast('글라이더를 접었어요', 2000); };
 function setMode(m) {
-  mode = m; $('foldUI').hidden = m !== 'fold'; $('shapeUI').hidden = m !== 'shape'; $('hud').hidden = m !== 'fly' && m !== 'aim'; $('aim').hidden = m !== 'aim'; $('steer').hidden = m !== 'fly'; $('alt').hidden = m !== 'fly'; $('bDash').hidden = m !== 'fly'; $('wind').hidden = m !== 'fly' && m !== 'aim'; if (m !== 'fly') $('stick').hidden = true; $('result').hidden = m !== 'result'; $('banner').hidden = true;
+  mode = m; $('foldUI').hidden = m !== 'fold'; $('shapeUI').hidden = m !== 'shape'; $('hud').hidden = m !== 'fly' && m !== 'aim'; $('aim').hidden = m !== 'aim'; $('steer').hidden = m !== 'fly'; $('alt').hidden = m !== 'fly'; $('vig').hidden = m !== 'fly' && m !== 'aim'; $('bDash').hidden = m !== 'fly'; $('wind').hidden = m !== 'fly' && m !== 'aim'; if (m !== 'fly') $('stick').hidden = true; $('result').hidden = m !== 'result'; $('banner').hidden = true;
   document.querySelectorAll('#steps span').forEach(s => s.classList.toggle('on', s.dataset.s === (m === 'aim' || m === 'result' ? 'fly' : m)));
   if (m !== 'fold') $('stylePop').hidden = true; if (m !== 'fold' && m !== 'shape') $('hangarPop').hidden = true;
   if (m === 'fold' || m === 'shape') { refresh(); setCam(); }
@@ -489,7 +495,7 @@ function savePlane() {
   const list = hangar(), name = ($('hName').value.trim() || '비행기 ' + (list.length + 1)).slice(0, 14);
   list.unshift({ id: Date.now(), name, at: Date.now(), img: thumb(), ops: ops.map(o => o.flip ? { flip: true } : { g: o.g, t: o.t, mode: o.mode, angle: o.angle }), creases, grip, fwdRot, upFlip, bend: { l: bend.l, r: bend.r }, paper: { ...paper } });
   while (list.length > 30) list.pop(); if (!hangarPut(list)) { list.forEach(x => { x.img = ''; }); if (!hangarPut(list)) return toast('저장 공간이 부족해요. 오래된 비행기를 지워 주세요', 2600); }
-  $('hName').value = ''; hangarUI(); toast('“' + name + '” 저장했어요'); snd(660, 0.1, 'triangle', 0.05, 990);
+  $('hName').value = ''; hangarUI(); toast('“' + name + '” 저장했어요'); sfx('save');
 }
 function loadPlane(it) {
   ops = it.ops.map(o => ({ ...o })); creases = it.creases || []; grip = it.grip || null; fwdRot = it.fwdRot || 0; upFlip = !!it.upFlip; Object.assign(paper, it.paper || {}); applyPaper();
@@ -523,8 +529,9 @@ $('ang').oninput = e => { $('angV').textContent = e.target.value + '°'; };
 /* ================= flight world ================= */
 const sceneB = new T.Scene(); sceneB.fog = new T.Fog(0xd6ecff, 150, 640);
 const camB = new T.PerspectiveCamera(62, 1, 0.05, 1500);
-sceneB.add(new T.HemisphereLight(0xffffff, 0x9cbf86, 0.74)); const sunB = new T.DirectionalLight(0xfff0cf, 0.5); sunB.position.set(-40, 70, -30); sceneB.add(sunB);
-const MAT = {}, mat = c => MAT[c] || (MAT[c] = new T.MeshLambertMaterial({ color: c, flatShading: true }));
+sceneB.add(new T.HemisphereLight(0xe6f1ff, 0x8fb47c, 0.66)); const sunB = new T.DirectionalLight(0xffe9bf, 0.62); sunB.position.set(-40, 70, -30); sceneB.add(sunB, sunB.target);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFSoftShadowMap; sunB.castShadow = true; sunB.shadow.mapSize.set(1024, 1024); sunB.shadow.bias = -0.0015; sunB.shadow.normalBias = 0.5; { const c = sunB.shadow.camera; c.left = c.bottom = -42; c.right = c.top = 42; c.near = 1; c.far = 240; c.updateProjectionMatrix(); }
+const MAT = {}, mat = c => MAT[c] || (MAT[c] = new T.MeshLambertMaterial({ color: c }));
 const GEO = { box: new T.BoxGeometry(1, 1, 1), cone: new T.ConeGeometry(1, 1, 7), pyr: new T.ConeGeometry(1, 1, 4), cyl: new T.CylinderGeometry(1, 1, 1, 10), sph: new T.SphereGeometry(1, 10, 7), ico: new T.IcosahedronGeometry(1, 0), disc: new T.CircleGeometry(1, 20), tor: new T.TorusGeometry(1, 0.08, 6, 20) };
 function part(parent, geo, color, x, y, z, sx, sy, sz, rx, rz) { const m = new T.Mesh(GEO[geo], typeof color === 'number' ? mat(color) : color); m.position.set(x, y, z); m.scale.set(sx, sy, sz); if (rx) m.rotation.x = rx; if (rz) m.rotation.z = rz; parent.add(m); return m; }
 function seg(parent, a, b, r, color, cap) { const A = V3(a[0], a[1], a[2]), B = V3(b[0], b[1], b[2]), d = B.clone().sub(A), m = new T.Mesh(GEO.cyl, typeof color === 'number' ? mat(color) : color); m.position.copy(A).addScaledVector(d, 0.5); m.scale.set(r, d.length(), r); m.quaternion.setFromUnitVectors(V3(0, 1, 0), d.clone().normalize()); parent.add(m); if (cap !== false) part(parent, 'sph', color, B.x, B.y, B.z, r, r, r); return m; }
@@ -536,20 +543,25 @@ const far = new T.Group(); sceneB.add(far);
   far.add(new T.Mesh(g, new T.MeshBasicMaterial({ vertexColors: true, side: T.BackSide, fog: false, depthWrite: false })));
   const cv = document.createElement('canvas'); cv.width = cv.height = 128; const x = cv.getContext('2d'), gr = x.createRadialGradient(64, 64, 6, 64, 64, 64); gr.addColorStop(0, 'rgba(255,255,240,1)'); gr.addColorStop(0.25, 'rgba(255,244,190,.9)'); gr.addColorStop(1, 'rgba(255,240,180,0)'); x.fillStyle = gr; x.fillRect(0, 0, 128, 128);
   const sun = new T.Sprite(new T.SpriteMaterial({ map: new T.CanvasTexture(cv), fog: false, depthWrite: false })); sun.position.set(520, 330, -420); sun.scale.set(260, 260, 1); far.add(sun); }
-const ground = (() => { const cv = document.createElement('canvas'); cv.width = cv.height = 128; const x = cv.getContext('2d'); x.fillStyle = '#7cc267'; x.fillRect(0, 0, 128, 128);
-  for (let i = 0; i < 900; i++) { x.fillStyle = ['#72b85e', '#86cb70', '#6fb35b', '#8fd279'][i % 4]; x.fillRect(Math.random() * 128, Math.random() * 128, 2 + Math.random() * 5, 2 + Math.random() * 5); }
-  const t = new T.CanvasTexture(cv); t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set(260, 260); const m = new T.Mesh(new T.PlaneGeometry(2200, 2200), new T.MeshLambertMaterial({ map: t })); m.rotation.x = -Math.PI / 2; sceneB.add(m); return m; })();
-const cloudMat = new T.MeshLambertMaterial({ color: 0xffffff, emissive: 0xaab4c4, flatShading: true }), darkCloud = new T.MeshLambertMaterial({ color: 0x59607a, emissive: 0x23263a, flatShading: true });
+const ground = (() => { const cv = document.createElement('canvas'); cv.width = cv.height = 512; const x = cv.getContext('2d'); x.fillStyle = '#74bb62'; x.fillRect(0, 0, 512, 512);
+  const blob = (n, r0, r1, cols, a) => { for (let i = 0; i < n; i++) { const px = Math.random() * 512, py = Math.random() * 512, r = r0 + Math.random() * (r1 - r0); x.fillStyle = cols[i % cols.length]; x.globalAlpha = a; for (const ox of [-512, 0, 512]) for (const oy of [-512, 0, 512]) { x.beginPath(); x.arc(px + ox, py + oy, r, 0, 6.283); x.fill(); } } x.globalAlpha = 1; };
+  blob(90, 30, 90, ['#6aae58', '#7fc56c', '#86cb72', '#63a853'], 0.22); blob(500, 4, 14, ['#8ed27a', '#5fa350', '#7cc468', '#96d884'], 0.25); blob(2600, 0.8, 2.2, ['#a2e08e', '#4f9443', '#b6e89f', '#5a9e4c'], 0.35); blob(60, 2, 4, ['#e9e3a0', '#f3f0c8'], 0.3);
+  const t = new T.CanvasTexture(cv); t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set(170, 170); t.anisotropy = 4; const m = new T.Mesh(new T.PlaneGeometry(2200, 2200), new T.MeshLambertMaterial({ map: t })); m.rotation.x = -Math.PI / 2; m.receiveShadow = true; sceneB.add(m); return m; })();
+// water: a rippled texture that drifts
+const waterTexs = [], waterImg = (() => { const cv = document.createElement('canvas'); cv.width = cv.height = 256; const x = cv.getContext('2d'); x.fillStyle = '#d9ecf8'; x.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 70; i++) { const y = Math.random() * 256, px = Math.random() * 256, w = 20 + Math.random() * 60; x.strokeStyle = i % 3 ? 'rgba(255,255,255,.55)' : 'rgba(120,170,205,.5)'; x.lineWidth = 1 + Math.random() * 2; for (const ox of [-256, 0, 256]) { x.beginPath(); for (let k = 0; k <= w; k += 4) x.lineTo(px + ox + k, y + Math.sin(k * 0.25) * 2.2); x.stroke(); } } return cv; })();
+const waterMats = {}; function waterMat(col, width) { const key = col + ':' + Math.round(width); if (waterMats[key]) return waterMats[key]; const t = new T.CanvasTexture(waterImg); t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set(Math.max(1, width / 9), 130); waterTexs.push(t); return waterMats[key] = new T.MeshLambertMaterial({ map: t, color: col, emissive: 0x0a2a44 }); }
+const cloudMat = new T.MeshLambertMaterial({ color: 0xffffff, emissive: 0xaab4c4 }), darkCloud = new T.MeshLambertMaterial({ color: 0x59607a, emissive: 0x23263a });
 function cloud(parent, x, y, z, s, m) { const g = new T.Group(); for (let j = 0; j < 6; j++) part(g, 'ico', m || cloudMat, (j - 2.5) * 1.5 * s + rnd(-0.5, 0.5) * s, rnd(-0.3, 0.5) * s, rnd(-1, 1) * s, rnd(1.4, 2.3) * s, rnd(0.9, 1.4) * s, rnd(1.2, 2) * s).rotation.y = rnd(0, 3); g.position.set(x, y, z); parent.add(g); return g; }
 for (let i = 0; i < 30; i++) { const a = i / 30 * 6.283, r = 760, h = rnd(90, 210), w = rnd(90, 170), c = [0x6f8fb5, 0x7c9cc0, 0x6585ab][i % 3]; part(far, 'cone', c, Math.cos(a) * r, h / 2 - 6, Math.sin(a) * r, w, h, w); if (h > 130) part(far, 'cone', 0xf4f8ff, Math.cos(a) * r, h - h * 0.14 - 6, Math.sin(a) * r, w * 0.3, h * 0.29, w * 0.3); }
 for (let i = 0; i < 30; i++) cloud(far, rnd(-520, 520), rnd(60, 150), rnd(-520, 520), rnd(3, 6));
 const shadow = part(sceneB, 'disc', new T.MeshBasicMaterial({ color: 0x1a2a1a, transparent: true, opacity: 0.28, depthWrite: false }), 0, 0.07, 0, 0.35, 0.35, 1, -Math.PI / 2);
 // static scenery of a chunk is merged into one mesh so a phone draws a few dozen objects instead of thousands
-const bakeMat = new T.MeshLambertMaterial({ vertexColors: true, flatShading: true }), dyn = o => { o.userData.dyn = true; return o; };
+const bakeMat = new T.MeshLambertMaterial({ vertexColors: true }), dyn = o => { o.userData.dyn = true; return o; };
 function bake(g) { const pos = [], col = [], rm = [], v = V3(0, 0, 0); g.updateMatrixWorld(true);
   (function walk(o) { for (const ch of o.children) { if (ch.userData.dyn || ch.isSprite) continue; if (!ch.isMesh) { walk(ch); continue; } const m = ch.material; if (!m.isMeshLambertMaterial || m.transparent || m.emissive.getHex() !== 0 || m.map) continue;
-      const p = ch.geometry.attributes.position, idx = ch.geometry.index, n = idx ? idx.count : p.count, c = m.color; for (let i = 0; i < n; i++) { v.fromBufferAttribute(p, idx ? idx.getX(i) : i).applyMatrix4(ch.matrixWorld); pos.push(v.x, v.y, v.z); col.push(c.r, c.g, c.b); } rm.push(ch); } })(g);
-  rm.forEach(m => m.parent.remove(m)); const geo = new T.BufferGeometry(); geo.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); geo.setAttribute('color', new T.Float32BufferAttribute(col, 3)); geo.computeVertexNormals(); g.add(new T.Mesh(geo, bakeMat)); }
+      const p = ch.geometry.attributes.position, idx = ch.geometry.index, n = idx ? idx.count : p.count, c = m.color, jit = 0.93 + ((rm.length * 0.61803) % 1) * 0.14; for (let i = 0; i < n; i++) { v.fromBufferAttribute(p, idx ? idx.getX(i) : i).applyMatrix4(ch.matrixWorld); pos.push(v.x, v.y, v.z); const f = v.y < 0.2 ? 1 : jit * (0.74 + 0.26 * Math.min(1, v.y / 2.4)); col.push(c.r * f, c.g * f, c.b * f); } rm.push(ch); } })(g);
+  rm.forEach(m => m.parent.remove(m)); const geo = new T.BufferGeometry(); geo.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); geo.setAttribute('color', new T.Float32BufferAttribute(col, 3)); geo.computeVertexNormals(); const bm = new T.Mesh(geo, bakeMat); bm.castShadow = bm.receiveShadow = true; g.add(bm); }
 let chunks = new Map(), colliders = [], anims = [], thermals = [];
 function seeded(s) { return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
 function label(txt) { const cv = document.createElement('canvas'); cv.width = 256; cv.height = 96; const x = cv.getContext('2d'); x.font = '700 60px sans-serif'; x.textAlign = 'center'; x.fillStyle = '#17264d'; x.strokeStyle = '#fff'; x.lineWidth = 10; x.lineJoin = 'round'; x.strokeText(txt, 128, 68); x.fillText(txt, 128, 68);
@@ -579,7 +591,7 @@ function genChunk(i) {
   const g = new T.Group(), C = [], r = seeded(i * 7919 + 13), x0 = i * 80, R = (a, b) => a + r() * (b - a), side = () => (r() < 0.5 ? -1 : 1); g.userData.C = C;
   for (let d = Math.max(10, x0); d < x0 + 80; d += 10) { part(g, 'box', 0xffffff, d, 0.05, 0, 0.22, 0.04, 8); if (d % 20 === 0) { const s = label(d + ' m'); s.position.set(d, 1.5, -5.6); g.add(s); part(g, 'cyl', 0xe2463f, d, 0.7, -4.4, 0.05, 1.4, 0.05); part(g, 'cone', 0xffd84a, d + 0.3, 1.25, -4.4, 0.18, 0.6, 0.02, 0, -Math.PI / 2); } }
   const zone = ['school', 'village', 'river', 'farm', 'fair', 'city', 'beach', 'sea', 'sea', 'sea'][i] || pickC(r, ['village', 'farm', 'forest', 'river', 'fair', 'city']);
-  const strip = (c, a, b, y) => part(g, 'box', c, (a + b) / 2, y || 0.03, 0, b - a, 0.04, 1200);
+  const strip = (c, a, b, y) => { const m = part(g, 'box', c === 0x4aa3df || c === 0x3f94d6 ? waterMat(c, b - a) : c, (a + b) / 2, y || 0.03, 0, b - a, 0.04, 1200); m.receiveShadow = true; return m; };
   const road = (a, b) => { part(g, 'box', 0x6f7482, (a + b) / 2, 0.04, 0, b - a, 0.05, 7); for (let x = a + 2; x < b; x += 6) part(g, 'box', 0xfdf3c8, x, 0.08, 0, 2.4, 0.02, 0.18); };
   if (zone === 'school') { part(g, 'box', 0xcf7f5a, 40, 0.03, 0, 64, 0.05, 46); part(g, 'box', 0x6fbf5e, 40, 0.05, 0, 54, 0.05, 32); for (let k = 0; k < 6; k++) part(g, 'box', k % 2 ? 0x78c866 : 0x66b655, 16 + k * 9, 0.06, 0, 9, 0.05, 32); part(g, 'tor', 0xffffff, 40, 0.09, 0, 4.5, 4.5, 1, Math.PI / 2);
     [14, 66].forEach(x => { part(g, 'box', 0xffffff, x, 1.2, -3.6, 0.15, 2.4, 0.15); part(g, 'box', 0xffffff, x, 1.2, 3.6, 0.15, 2.4, 0.15); part(g, 'box', 0xffffff, x, 2.4, 0, 0.15, 0.15, 7.3); });
@@ -657,10 +669,12 @@ function showWind() { W0.x = Math.cos(W0.dir) * W0.sp; W0.z = Math.sin(W0.dir) *
   $('windArrow').style.transform = 'rotate(' + (W0.dir * 180 / Math.PI).toFixed(0) + 'deg)'; $('windArrow').style.opacity = W0.sp < 0.3 ? 0.25 : 1; if (txt !== showWind.last) { showWind.last = txt; $('windTxt').innerHTML = txt; } }
 function newWind() { pickWind(); W0.dir = W0.tdir; W0.sp = W0.tsp; showWind(); }
 function updWind(dt) { if ((W0.next -= dt) < 0) pickWind(); const k = Math.min(1, dt * 0.45); W0.dir += (W0.tdir - W0.dir) * k; W0.sp += (W0.tsp - W0.sp) * k; showWind(); }
+let mile = 0, record = 0, recordHit = false, quality = 2, perfT = 0, perfN = 0;
+function popUp(txt, big) { const e = $('pop'); e.textContent = txt; e.className = big ? 'big' : ''; e.hidden = false; void e.offsetWidth; e.classList.add('go'); clearTimeout(popUp.t); popUp.t = setTimeout(() => { e.hidden = true; }, big ? 2200 : 1300); }
 const Fl = {}; let flyT = 0, events = [], nextEvt = 0, keyL = false, keyR = false, keyU = false, keyD = false, wind = V3(0, 0, 0), gustT = 0, best = 0;
 function resetFlight() {
   buildPlane(); newWind(); ctl.cd = ctl.dash = ctl.spin = ctl.u = ctl.v = 0; Object.assign(Fl, { inv: 0, bias: 0, sk: 1, smoke: 0, wet: 0, abduct: 0, poops: 0, inRain: false, status: new Map(), x: 0.6, y: H0 + 1.45, z: 0, V: 0, gam: 0, psi: 0, th: 0, q: 0, phi: 0, pr: 0, t: 0, maxY: 0, flying: false, mass: aero.mass, sm: aero.sm, Cd0: aero.Cd0, pull: 0 });
-  events.forEach(e => sceneB.remove(e.g)); events = []; sparks.forEach(sp => sceneB.remove(sp.m)); sparks.length = 0; pB.material.color.set(0xffffff); $('splat').innerHTML = ''; nextEvt = rnd(32, 48); wind.set(0, 0, 0); gustT = 0; updateChunks(0); hand.visible = true; $('dist').textContent = '0.0 m'; $('sub').textContent = '';
+  events.forEach(e => sceneB.remove(e.g)); events = []; sparks.length = 0; trails.forEach(t => { t.pts.length = 0; }); mile = 0; record = (board()[0] || { d: 0 }).d; recordHit = false; pB.material.color.set(0xffffff); $('splat').innerHTML = ''; nextEvt = rnd(32, 48); wind.set(0, 0, 0); gustT = 0; updateChunks(0); hand.visible = true; $('dist').textContent = '0.0 m'; $('sub').textContent = '';
 }
 function physics(dt) {
   const A = aero, m = Fl.mass * (1 + Fl.wet), g = 9.81, V = Math.max(Fl.V, 0), Vs = Math.max(V, 0.3), qd = 0.6 * V * V; let al = Fl.th - Fl.gam; al = Math.atan2(Math.sin(al), Math.cos(al));
@@ -679,12 +693,12 @@ function physics(dt) {
   // roll: lopsided wings, an off-centre CG or uneven bends set a small steady bank (a gentle turn); knocks are transient and the plane rights itself
   const stabK = 1 + 6 * Math.max(0, A.gam) + 10 * Math.max(0, A.zw / A.b), raw = (2.2 * A.asym + 5 * A.cgy + 6 * A.roll + 8 * Fl.bias) / stabK, phiT = clamp(Math.sign(raw) * Math.max(0, Math.abs(raw) - 0.035), -0.28, 0.28), w = 4.5;
   Fl.pr += (-Math.sin(Fl.phi - phiT) * w * w - 1.7 * w * Fl.pr) * dt + (Math.random() - 0.5) * (0.6 + 6 * st) * dt; Fl.pr = clamp(Fl.pr, -16, 16); Fl.phi += Fl.pr * dt;
-  let wy = 0; for (const t of thermals) if (Fl.y < 42 && Math.hypot(Fl.x - t.x, Fl.z - t.z) < t.r) { wy = t.w; if (Fl.status) Fl.status.set('상승기류', 0.25); }
+  let wy = 0; for (const t of thermals) if (Fl.y < 42 && Math.hypot(Fl.x - t.x, Fl.z - t.z) < t.r) { wy = t.w; if (Fl.status) { if (!Fl.status.has('상승기류')) { sfx('lift'); ring(Fl.x, Fl.y, Fl.z, 0xfff2a8, 3, 0.5); } Fl.status.set('상승기류', 0.25); if (Math.random() < 0.02) spark(Fl.x + rnd(-1, 1), Fl.y - 0.5, Fl.z + rnd(-1, 1), 0xfff2a8, 0.05, 0.8, 0, 3, 0, 0, 0, true); } }
   Fl.x += (vh * Math.cos(Fl.psi) + wind.x + W0.x) * dt; Fl.z += (vh * Math.sin(Fl.psi) + wind.z + W0.z) * dt; Fl.y += (vy + wy + wind.y) * dt;
 }
 function placePlane() { planeG.position.set(Fl.x, Fl.y, Fl.z); planeG.rotation.set(Fl.phi + (Fl.flying ? ctl.u * 0.35 + ctl.spin : 0), -Fl.psi, Fl.th + (Fl.flying ? Math.min(0, ctl.v) * 0.22 : 0), 'YZX'); }
 function endFlight(why) {
-  Fl.flying = false; const d = Math.hypot(Fl.x - 0.6, Fl.z); Fl.dist = d; snd(160, 0.2, 'triangle', 0.08, 70);
+  Fl.flying = false; const d = Math.hypot(Fl.x - 0.6, Fl.z); Fl.dist = d; sfx('land'); if (Fl.y < 1) for (let i = 0; i < 22; i++) spark(Fl.x, 0.1, Fl.z, i % 3 ? 0xc9b98a : 0x9fd27f, rnd(0.07, 0.16), rnd(0.5, 1.1), rnd(-0.5, 3), rnd(0.3, 2.2), rnd(-2, 2), 3, 2.5, false, 2);
   $('rTitle').textContent = why || '착륙!'; $('rDist').textContent = d.toFixed(1) + ' m'; $('rInfo').innerHTML = '체공 시간 <b>' + Fl.t.toFixed(1) + '초</b> · 최고 높이 <b>' + Fl.maxY.toFixed(1) + ' m</b> · 날개 면적 ' + (aero.S * 1e4).toFixed(0) + ' cm²';
   $('bSave').disabled = false; showBoard(-1); setTimeout(() => setMode('result'), 700);
 }
@@ -709,7 +723,7 @@ function aimUp(e) {
 function launch(power, yaw) {
   const A = aero, gx = gripB.x / VS, gz = gripB.z / VS, eff = clamp(1 - 0.7 * Math.abs(gx - 0.01) / A.len - 1.3 * Math.abs(gz) / A.b, 0.45, 1), ang = +$('ang').value * Math.PI / 180;
   Object.assign(Fl, { V: Math.max(2.5, (3.5 + 11.5 * power) * eff - W0.x * 0.6), gam: ang, th: ang + Math.min(A.aTrim, 0.16), psi: yaw, q: (Math.random() - 0.5) * 6 * Math.abs(gx) / A.len, pr: clamp(-gz / A.b * 3 * power, -2.5, 2.5) + (Math.random() - 0.5) * 0.4, phi: 0, flying: true, t: 0, maxY: 0, pull: 0 });
-  hand.visible = false; setMode('fly'); snd(300, 0.25, 'sawtooth', 0.05, 900); if (eff < 0.8) toast('잡은 곳이 무게중심에서 멀어 힘이 덜 실렸어요', 2200);
+  hand.visible = false; setMode('fly'); sfx('throw'); for (let i = 0; i < 16; i++) spark(Fl.x, Fl.y, Fl.z, 0xffffff, 0.06, rnd(0.3, 0.6), rnd(-2, 1), rnd(-1, 1), rnd(-1.5, 1.5), 0, 2, false, 2); if (eff < 0.8) toast('잡은 곳이 무게중심에서 멀어 힘이 덜 실렸어요', 2200);
 }
 // steering: drag anywhere (or WASD / arrows) to slide and climb; the dodge button (Space) is a quick roll with a moment of safety
 const ctl = { u: 0, v: 0, su: 0, sv: 0, id: -1, ox: 0, oy: 0, cd: 0, dash: 0, du: 0, dv: 0, spin: 0 };
@@ -718,7 +732,7 @@ function stickMove(e) { if (e.pointerId !== ctl.id) return; let dx = (e.clientX 
 function stickUp(e) { if (e.pointerId !== ctl.id) return; ctl.id = -1; ctl.su = ctl.sv = 0; $('stick').hidden = true; }
 function dodge() {
   if (!Fl.flying || ctl.cd > 0 || Fl.abduct > 0) return; let du = ctl.u, dv = ctl.v; dv = Math.min(0, dv); if (Math.hypot(du, dv) < 0.3) { du = Fl.z > 0 ? -1 : 1; dv = 0; } const l = Math.hypot(du, dv); ctl.du = du / l; ctl.dv = dv / l;
-  ctl.dash = 0.34; ctl.cd = 1.8; Fl.inv = 0.55; snd(500, 0.2, 'triangle', 0.06, 1100); for (let i = 0; i < 8; i++) spark(Fl.x, Fl.y, Fl.z, 0xffffff, 0.05, 0.35, rnd(-1, 1), rnd(-1, 1), rnd(-1, 1));
+  ctl.dash = 0.34; ctl.cd = 1.8; Fl.inv = 0.55; sfx('dodge'); ring(Fl.x, Fl.y, Fl.z, 0xbfe6ff, 2.2, 0.35); for (let i = 0; i < 8; i++) spark(Fl.x, Fl.y, Fl.z, 0xffffff, 0.05, 0.35, rnd(-1, 1), rnd(-1, 1), rnd(-1, 1));
 }
 function control(dt) {
   const ku = (keyR ? 1 : 0) - (keyL ? 1 : 0), kv = (keyU ? 1 : 0) - (keyD ? 1 : 0), tu = clamp(ku + ctl.su, -1, 1), tv = clamp(kv + ctl.sv, -1, 1), k = Math.min(1, dt * 9); ctl.u += (tu - ctl.u) * k; ctl.v += (tv - ctl.v) * k;
@@ -734,15 +748,34 @@ addEventListener('keyup', e => { const c = e.code; if (c === 'ArrowLeft' || c ==
 
 /* ---- spoilers and their effects ---- */
 function banner(msg) { const b = $('banner'); b.textContent = msg; b.hidden = false; clearTimeout(banner.t); banner.t = setTimeout(() => { b.hidden = true; }, 2100); }
-const sparks = []; let shake = 0;
-function spark(x, y, z, col, size, life, vx, vy, vz, grav, grow) { const m = part(sceneB, 'ico', col, x, y, z, size, size, size); sparks.push({ m, vx, vy, vz, life, max: life, size, grav: grav || 0, grow: grow || 0 }); }
+const sparks = []; let shake = 0, hitStop = 0;
+const PMAX = 900, pPos = new Float32Array(PMAX * 3), pCol = new Float32Array(PMAX * 4), pSz = new Float32Array(PMAX), pAdd = new Float32Array(PMAX), pGeo = new T.BufferGeometry();
+pGeo.setAttribute('position', new T.BufferAttribute(pPos, 3)); pGeo.setAttribute('pcolor', new T.BufferAttribute(pCol, 4)); pGeo.setAttribute('psize', new T.BufferAttribute(pSz, 1)); pGeo.setAttribute('padd', new T.BufferAttribute(pAdd, 1));
+const pMat = new T.ShaderMaterial({ transparent: true, depthWrite: false, blending: T.CustomBlending, blendEquation: T.AddEquation, blendSrc: T.OneFactor, blendDst: T.OneMinusSrcAlphaFactor, uniforms: { scale: { value: 400 } },
+  vertexShader: 'attribute vec4 pcolor; attribute float psize; attribute float padd; varying vec4 vc; varying float va; uniform float scale; void main(){ vc = pcolor; va = padd; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = min(260.0, psize * scale / max(0.3, -mv.z)); gl_Position = projectionMatrix * mv; }',
+  fragmentShader: 'varying vec4 vc; varying float va; void main(){ float r = length(gl_PointCoord - 0.5) * 2.0; float a = smoothstep(1.0, 0.2, r) * vc.a; if (a < 0.004) discard; gl_FragColor = vec4(vc.rgb * a, a * (1.0 - va)); }' });
+const pPts = new T.Points(pGeo, pMat); pPts.frustumCulled = false; pPts.renderOrder = 20; sceneB.add(pPts);
+const GLOW = new Set([0x9dffb8, 0x7dffa0, 0x48ff7a, 0xffd84a, 0xff8a3a, 0xbfd6ff, 0xfff2a8, 0xffe9a0]);
+// shock rings: additive billboards that swell and fade
+const ringTex = (() => { const cv = document.createElement('canvas'); cv.width = cv.height = 128; const x = cv.getContext('2d'), g = x.createRadialGradient(64, 64, 30, 64, 64, 64); g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.72, 'rgba(255,255,255,0.05)'); g.addColorStop(0.86, 'rgba(255,255,255,1)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 128, 128); return new T.CanvasTexture(cv); })(), ringPool = [];
+function ring(x, y, z, col, size, life) { let r = ringPool.find(q => !q.visible); if (!r) { if (ringPool.length >= 8) return; r = new T.Sprite(new T.SpriteMaterial({ map: ringTex, transparent: true, depthWrite: false, blending: T.AdditiveBlending, fog: false })); r.renderOrder = 19; sceneB.add(r); ringPool.push(r); } r.visible = true; r.position.set(x, y, z); r.material.color.set(col); r.userData = { t: 0, life: life || 0.5, size }; }
+// wing-tip trails: two fading ribbons
+const TRN = 26, trailMat = new T.ShaderMaterial({ transparent: true, depthWrite: false, side: T.DoubleSide, vertexShader: 'attribute float alpha; varying float va; void main(){ va = alpha; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }', fragmentShader: 'varying float va; void main(){ gl_FragColor = vec4(1.0, 1.0, 1.0, va * 0.55); }' });
+const trails = [1, -1].map(side => { const g = new T.BufferGeometry(), idx = []; for (let i = 0; i < TRN - 1; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); } g.setAttribute('position', new T.BufferAttribute(new Float32Array(TRN * 6), 3)); g.setAttribute('alpha', new T.BufferAttribute(new Float32Array(TRN * 2), 1)); g.setIndex(idx); const m = new T.Mesh(g, trailMat); m.frustumCulled = false; m.renderOrder = 18; sceneB.add(m); return { side, m, pts: [] }; });
+function updTrails() { for (const tr of trails) { if (Fl.flying) { const p = planeG.localToWorld(V3(-aero.len * 0.3 * VS, 0.02, tr.side * aero.b * 0.5 * VS)); tr.pts.unshift({ p, a: clamp((Fl.V - 3) / 4, 0, 1) }); if (tr.pts.length > TRN) tr.pts.pop(); } else if (tr.pts.length) tr.pts.pop();
+    const pos = tr.m.geometry.attributes.position, al = tr.m.geometry.attributes.alpha, n = tr.pts.length; for (let i = 0; i < TRN; i++) { const q = tr.pts[Math.min(i, n - 1)], w = 0.03 * (1 - i / TRN) + 0.004; if (!q) { al.setX(i * 2, 0); al.setX(i * 2 + 1, 0); continue; } pos.setXYZ(i * 2, q.p.x, q.p.y + w, q.p.z); pos.setXYZ(i * 2 + 1, q.p.x, q.p.y - w, q.p.z); const a = i < n ? q.a * (1 - i / TRN) : 0; al.setX(i * 2, a); al.setX(i * 2 + 1, a); } pos.needsUpdate = al.needsUpdate = true; } }
+function spark(x, y, z, col, size, life, vx, vy, vz, grav, grow, add, drag) { if (sparks.length >= PMAX) sparks.shift(); sparks.push({ x, y, z, vx, vy, vz, life, max: life, size: size * 2.8, grav: grav || 0, grow: grow || 0, r: (col >> 16 & 255) / 255, g: (col >> 8 & 255) / 255, b: (col & 255) / 255, add: (add === undefined ? GLOW.has(col) : add) ? 1 : 0, drag: drag || 0 }); }
 function puff(x, y, z, col, n, sp) { for (let i = 0; i < n; i++) spark(x, y, z, col, rnd(0.06, 0.14), rnd(0.6, 1.2), rnd(-1, 1) * (sp || 3), rnd(-0.3, 1.2) * (sp || 3), rnd(-1, 1) * (sp || 3), 6); }
 function flashFx(col, a) { const f = $('flash'); f.style.transition = 'none'; f.style.background = col; f.style.opacity = a; void f.offsetWidth; f.style.transition = 'opacity .7s'; f.style.opacity = 0; }
 function splatFx() { const s = $('splat'); for (let i = 0; i < 3; i++) { const d = document.createElement('i'); d.style.left = rnd(4, 78) + '%'; d.style.top = rnd(8, 60) + '%'; const k = rnd(60, 150); d.style.width = k + 'px'; d.style.height = k * rnd(0.8, 1.2) + 'px'; d.style.borderRadius = rnd(38, 62) + '% ' + rnd(38, 62) + '% ' + rnd(38, 62) + '% ' + rnd(38, 62) + '%'; s.appendChild(d); setTimeout(() => d.remove(), 4200); } }
 const near = (p, r) => !(Fl.inv > 0) && Math.hypot(p.x - Fl.x, p.y - Fl.y, p.z - Fl.z) < r; // a dodge roll slips through for a moment
-function knock(v, roll, pitch, msg, col, sh) { Fl.V *= v; Fl.pr += roll; Fl.q += pitch; toast(msg, 2000); flashFx(col || '#fff', 0.45); shake = Math.max(shake, sh || 0.5); snd(140, 0.25, 'square', 0.08, 55); }
+function knock(v, roll, pitch, msg, col, sh) { Fl.V *= v; Fl.pr += roll; Fl.q += pitch; toast(msg, 2000); flashFx(col || '#fff', 0.45); shake = Math.max(shake, sh || 0.5); hitStop = 0.09; ring(Fl.x, Fl.y, Fl.z, 0xffffff, 3.2, 0.4); for (let i = 0; i < 14; i++) spark(Fl.x, Fl.y, Fl.z, 0xfff2a8, 0.05, rnd(0.25, 0.5), rnd(-7, 7), rnd(-5, 7), rnd(-7, 7), 4, 0, true, 3); sfx('hit'); }
 function updFx(dt) {
-  for (let i = sparks.length - 1; i >= 0; i--) { const s = sparks[i]; s.life -= dt; if (s.life <= 0) { sceneB.remove(s.m); sparks.splice(i, 1); continue; } s.vy -= s.grav * dt; s.m.position.x += s.vx * dt; s.m.position.y += s.vy * dt; s.m.position.z += s.vz * dt; const k = (s.grow ? 1 + (1 - s.life / s.max) * s.grow : 1) * Math.min(1, s.life / s.max * 2.5) * s.size; s.m.scale.setScalar(k); }
+  for (let i = sparks.length - 1; i >= 0; i--) { const s = sparks[i]; s.life -= dt; if (s.life <= 0) { sparks.splice(i, 1); continue; } s.vy -= s.grav * dt; if (s.drag) { const k = Math.exp(-s.drag * dt); s.vx *= k; s.vy *= k; s.vz *= k; } s.x += s.vx * dt; s.y += s.vy * dt; s.z += s.vz * dt; }
+  { let n = 0; for (const s of sparks) { const u = s.life / s.max; pPos[n * 3] = s.x; pPos[n * 3 + 1] = s.y; pPos[n * 3 + 2] = s.z; pCol[n * 4] = s.r; pCol[n * 4 + 1] = s.g; pCol[n * 4 + 2] = s.b; pCol[n * 4 + 3] = Math.min(1, u * 2.4) * (s.add ? 1 : 0.85); pSz[n] = s.size * (1 + (1 - u) * s.grow); pAdd[n] = s.add; n++; }
+    pGeo.setDrawRange(0, n); for (const k in pGeo.attributes) pGeo.attributes[k].needsUpdate = true; pMat.uniforms.scale.value = canvas.height / (2 * Math.tan(camB.fov * Math.PI / 360)); }
+  for (const r of ringPool) if (r.visible) { const d = r.userData; d.t += dt; const u = d.t / d.life; if (u >= 1) { r.visible = false; continue; } const k = d.size * (0.25 + u * 1.5); r.scale.set(k, k, 1); r.material.opacity = (1 - u) * (1 - u); }
+  updTrails();
   shake = Math.max(0, shake - dt * 1.6);
   if (Fl.flying) { if (Fl.smoke > 0 && Math.random() < dt * 22) spark(Fl.x + 0.1, Fl.y + 0.05, Fl.z, Math.random() < 0.3 ? 0xff8a3a : 0x5a5e6a, 0.035, 0.7, Fl.V * 0.6, rnd(0.5, 1.2), rnd(-0.2, 0.2), 0, 1.2);
     if (Fl.wet > 0 && !Fl.inRain) Fl.wet = Math.max(0, Fl.wet - dt * 0.04); Fl.inRain = false;
@@ -761,12 +794,12 @@ const SPOIL = {
   bird() { banner('새 떼가 가로질러 옵니다! 아래로 내려가 피하세요'); const g = new T.Group(), dir = Math.random() < 0.5 ? 1 : -1, Tc = 2.3, x = Fl.x + Fl.V * Math.cos(Fl.gam) * Tc, y = Math.max(1.8, Fl.y + Fl.V * Math.sin(Fl.gam) * Tc), birds = [];
     for (let i = 0; i < 7; i++) { const b = birdModel(0xf4f6fb, 0x8f98ad, 1.25); b.rotation.y = dir > 0 ? -Math.PI / 2 : Math.PI / 2; b.position.set(x + rnd(-2, 2.5), y + rnd(-0.8, 0.8), Fl.z - dir * (8 * Tc + i * 0.9 - 3)); b.userData.ph = rnd(0, 6); g.add(b); birds.push(b); } sceneB.add(g);
     return { g, upd(dt, t) { for (const b of birds) { b.position.z += dir * 8 * dt; b.position.y += Math.sin(t * 3 + b.userData.ph) * 0.3 * dt; b.userData.flap(t * 15 + b.userData.ph); if (!b.userData.hit && near(b.position, 0.8)) { b.userData.hit = true; knock(0.55, rnd(5, 9) * (Math.random() < 0.5 ? -1 : 1), rnd(-4, -1), '새와 부딪혔다! 빙글빙글', '#fff', 0.8); puff(Fl.x, Fl.y, Fl.z, 0xf4f6fb, 14, 3); Fl.status.set('어질어질', 2.5); } } return dir * (birds[0].position.z - Fl.z) > 45; } }; },
-  gust() { const dir = Math.random() < 0.5 ? 1 : -1; banner(dir > 0 ? '돌풍! 왼쪽으로 버티세요' : '돌풍! 오른쪽으로 버티세요'); const g = new T.Group(), leaves = []; for (let i = 0; i < 30; i++) part(g, 'box', thermMat, rnd(-4, 24), rnd(-5, 5), rnd(-13, 13), 0.03, 0.03, rnd(2, 5)); for (let i = 0; i < 26; i++) leaves.push(part(g, 'box', [0xe08a2e, 0x67b84d, 0xd45a34, 0xe6b83a][i % 4], rnd(-3, 22), rnd(-4, 4), rnd(-13, 13), 0.16, 0.02, 0.1)); sceneB.add(g); let t = 0; snd(200, 2.6, 'sawtooth', 0.03, 420);
+  gust() { const dir = Math.random() < 0.5 ? 1 : -1; banner(dir > 0 ? '돌풍! 왼쪽으로 버티세요' : '돌풍! 오른쪽으로 버티세요'); const g = new T.Group(), leaves = []; for (let i = 0; i < 30; i++) part(g, 'box', thermMat, rnd(-4, 24), rnd(-5, 5), rnd(-13, 13), 0.03, 0.03, rnd(2, 5)); for (let i = 0; i < 26; i++) leaves.push(part(g, 'box', [0xe08a2e, 0x67b84d, 0xd45a34, 0xe6b83a][i % 4], rnd(-3, 22), rnd(-4, 4), rnd(-13, 13), 0.16, 0.02, 0.1)); sceneB.add(g); let t = 0; sfx('gust');
     return { g, upd(dt) { t += dt; g.position.set(Fl.x, Fl.y, Fl.z); g.children.forEach(m => { m.position.z += dir * 24 * dt; if (Math.abs(m.position.z) > 13) m.position.z = -dir * 13; }); leaves.forEach((m, i) => { m.rotation.x += dt * (6 + i % 5); m.rotation.y += dt * 4; m.position.y += Math.sin(t * 6 + i) * dt * 2; });
       const k = Math.sin(Math.min(1, t / 3.2) * Math.PI); const hold = clamp(-dir * ctl.u, 0, 1); wind.set(-3 * k, Math.sin(t * 5) * 1.2 * k, dir * 4.6 * k); Fl.pr += (dir * 7 * k * dt + (Math.random() - 0.5) * 12 * dt) * (1 - 0.75 * hold); Fl.q += (Math.random() - 0.5) * 8 * dt; shake = Math.max(shake, 0.25 * k); Fl.status.set('돌풍', 0.2); if (t > 3.2) { wind.set(0, 0, 0); return true; } return false; } }; },
   jet() { banner('여객기가 지나갑니다! 아래로 내려가 뒷바람을 피하세요'); const g = new T.Group(), j = new T.Group(), dir = Math.random() < 0.5 ? 1 : -1; part(j, 'cyl', 0xfbfcff, 0, 0, 0, 1.4, 18, 1.4, Math.PI / 2); part(j, 'sph', 0xfbfcff, 0, 0, 9, 1.4, 1.4, 2.6); part(j, 'cone', 0xfbfcff, 0, 0.3, -10.4, 1.4, 3.4, 1.4, -Math.PI / 2); part(j, 'box', 0x2456d6, 0, 0.2, 0, 2.86, 0.35, 17);
     [1, -1].forEach(s => { const w = part(j, 'box', 0xdfe6f5, s * 6, -0.4, -0.8, 11, 0.25, 3.4); w.rotation.y = s * 0.42; part(j, 'cyl', 0x8c8f99, s * 4.4, -1.1, 0.6, 0.62, 2.2, 0.62, Math.PI / 2); const tl = part(j, 'box', 0xdfe6f5, s * 2.4, 0.6, -9.6, 4.2, 0.18, 1.6); tl.rotation.y = s * 0.4; }); part(j, 'box', 0xe2463f, 0, 2.4, -9.6, 0.25, 4, 2.6).rotation.x = -0.35;
-    j.rotation.y = dir > 0 ? 0 : Math.PI; g.add(j); const x = Fl.x + Fl.V * 3.2 + 8, y = Fl.y + Fl.V * Math.sin(Fl.gam) * 3.2 + 0.4; j.position.set(x, y, Fl.z - dir * 150); sceneB.add(g); let passed = 0, wake = 0, hit = false; snd(90, 3.2, 'sawtooth', 0.06, 190);
+    j.rotation.y = dir > 0 ? 0 : Math.PI; g.add(j); const x = Fl.x + Fl.V * 3.2 + 8, y = Fl.y + Fl.V * Math.sin(Fl.gam) * 3.2 + 0.4; j.position.set(x, y, Fl.z - dir * 150); sceneB.add(g); let passed = 0, wake = 0, hit = false; sfx('jet');
     return { g, upd(dt) { j.position.z += dir * 50 * dt; if (Math.random() < dt * 60) { spark(x + rnd(-0.4, 0.4), y - 0.6, j.position.z - dir * 12 + rnd(-1, 1), 0xffffff, 0.5, 2.4, 0, 0.15, 0, 0, 2); }
       if (!passed && dir * (j.position.z - Fl.z) > 0) { passed = 1; wake = 2.6; shake = Math.max(shake, 0.5); } if (wake > 0) { wake -= dt; if (!hit && !(Fl.inv > 0) && Math.abs(Fl.x - x) < 3.5 && Math.abs(Fl.y - y) < 2.4) { hit = true; Fl.gam -= 0.4; knock(0.8, rnd(9, 14) * (Math.random() < 0.5 ? -1 : 1), rnd(-8, -4), '여객기 뒷바람에 휘말려 곤두박질!', '#dfe6f5', 1); Fl.status.set('난기류', 2.5); for (let i = 0; i < 14; i++) spark(Fl.x + rnd(-1, 1), Fl.y + rnd(-1, 1), Fl.z + rnd(-1, 1), 0xffffff, 0.25, 1, rnd(-3, 3), rnd(-3, 3), rnd(-3, 3)); } }
       return dir * (j.position.z - Fl.z) > 190 && wake <= 0; } }; },
@@ -774,7 +807,7 @@ const SPOIL = {
     return { g, upd(dt) { t += dt; b.userData.flap(t * 11); const tx = Fl.x + Fl.V * 0.55, ty = Fl.y + 3.6; b.position.x += (tx - b.position.x) * Math.min(1, dt * 2.5); b.position.y += (ty - b.position.y) * dt * 3; b.position.z += clamp(Fl.z - b.position.z, -1.9 * dt, 1.9 * dt); b.rotation.z = Math.sin(t * 2) * 0.08;
       if (n < 5 && t > 1.3 + n * 0.75) { n++; const d = new T.Group(); part(d, 'sph', 0xfbfcff, 0, 0, 0, 0.2, 0.26, 0.2); part(d, 'sph', 0xd8dccb, 0, 0.14, 0, 0.11, 0.2, 0.11); d.position.copy(b.position).add(V3(-0.6, -0.5, 0)); d.userData = { vy: 0, vx: Fl.V * Math.cos(Fl.gam) + wind.x, vz: Fl.V * Math.sin(Fl.psi) }; g.add(d); drops.push(d); snd(700, 0.12, 'sine', 0.05, 250); }
       for (const d of drops) { if (!d.visible) continue; d.userData.vy -= 9.8 * dt; d.position.y += d.userData.vy * dt; d.position.x += d.userData.vx * dt; d.position.z += d.userData.vz * dt; d.scale.y = 1 + Math.min(1.2, -d.userData.vy * 0.12); if (d.position.y < 0.1) d.visible = false;
-        else if (near(d.position, 0.55)) { d.visible = false; Fl.poops = (Fl.poops || 0) + 1; Fl.mass *= 1.28; Fl.sm += 0.07; Fl.Cd0 += 0.012; const sp = new T.Group(); part(sp, 'sph', 0xfbfcff, 0, 0, 0, 0.075, 0.016, 0.075); part(sp, 'sph', 0xd8dccb, 0.02, 0.008, 0.01, 0.035, 0.014, 0.035); sp.position.set(rnd(-0.12, 0.16), 0.02, rnd(-0.12, 0.12)); planeIn.add(sp); splatFx(); for (const k of [...Fl.status.keys()]) if (k.startsWith('새똥')) Fl.status.delete(k); Fl.status.set('새똥 ×' + Fl.poops + ' · 무거움', Infinity); knock(0.93, rnd(-3, 3), -3.5, '철퍽! 새똥에 맞아 비행기가 무거워졌다', '#f3f1dc', 0.6); puff(Fl.x, Fl.y, Fl.z, 0xfbfcff, 8, 2); } }
+        else if (near(d.position, 0.55)) { d.visible = false; Fl.poops = (Fl.poops || 0) + 1; Fl.mass *= 1.28; Fl.sm += 0.07; Fl.Cd0 += 0.012; const sp = new T.Group(); part(sp, 'sph', 0xfbfcff, 0, 0, 0, 0.075, 0.016, 0.075); part(sp, 'sph', 0xd8dccb, 0.02, 0.008, 0.01, 0.035, 0.014, 0.035); sp.position.set(rnd(-0.12, 0.16), 0.02, rnd(-0.12, 0.12)); planeIn.add(sp); splatFx(); sfx('splat'); for (const k of [...Fl.status.keys()]) if (k.startsWith('새똥')) Fl.status.delete(k); Fl.status.set('새똥 ×' + Fl.poops + ' · 무거움', Infinity); knock(0.93, rnd(-3, 3), -3.5, '철퍽! 새똥에 맞아 비행기가 무거워졌다', '#f3f1dc', 0.6); puff(Fl.x, Fl.y, Fl.z, 0xfbfcff, 8, 2); } }
       if (t > 6) { b.position.y += 8 * dt; b.position.z += 10 * dt; } return t > 8; } }; },
   ufo() { banner('외계인이 도와줍니다! 초록 광선 안에 머무르세요'); const g = new T.Group(), u = new T.Group(), lights = []; part(u, 'sph', 0x9aa8c8, 0, 0, 0, 3, 0.55, 3); part(u, 'cyl', 0x6d7a99, 0, -0.35, 0, 1.6, 0.35, 1.6); part(u, 'tor', 0x5c6884, 0, 0.02, 0, 3, 3, 2.2, Math.PI / 2); part(u, 'sph', new T.MeshLambertMaterial({ color: 0x9fe8ff, transparent: true, opacity: 0.55 }), 0, 0.45, 0, 1.25, 0.95, 1.25);
     part(u, 'sph', 0x66d17a, 0, 0.55, 0, 0.42, 0.5, 0.42); part(u, 'sph', 0x101010, 0.2, 0.66, 0.3, 0.13, 0.19, 0.08); part(u, 'sph', 0x101010, -0.2, 0.66, 0.3, 0.13, 0.19, 0.08); seg(u, [0.15, 0.95, 0], [0.4, 1.4, 0], 0.03, 0x66d17a); seg(u, [-0.15, 0.95, 0], [-0.4, 1.4, 0], 0.03, 0x66d17a);
@@ -783,24 +816,67 @@ const SPOIL = {
     return { g, upd(dt) { t += dt; const on = t > 1.2 && t < 7.4; u.rotation.y = t * 2.5; lights.forEach((l, i) => { l.scale.setScalar(0.2 + 0.1 * Math.sin(t * 12 + i * 0.8)); });
       if (t < 7.6) { bz += clamp(Fl.z - bz, -3.2 * dt, 3.2 * dt); u.position.x += (Fl.x + 0.8 - u.position.x) * Math.min(1, dt * 4); u.position.z += (bz - u.position.z) * Math.min(1, dt * 5); u.position.y += (Fl.y + 6.5 - u.position.y) * dt * 3; } else { u.position.y += 30 * dt; u.position.x += 20 * dt; }
       beam.visible = on; if (on) { const h = u.position.y - 0.4; beam.scale.set(1, h, 1); beam.position.set(u.position.x, h / 2, u.position.z); beamMat.opacity = 0.22 + 0.1 * Math.sin(t * 20); if (Math.random() < dt * 30) spark(u.position.x + rnd(-1.2, 1.2), rnd(0, h), u.position.z + rnd(-1.2, 1.2), 0x9dffb8, 0.06, 0.5, 0, 3, 0);
-        if (Math.hypot(Fl.x - u.position.x, Fl.z - u.position.z) < 1.7 && Fl.y < u.position.y) { if (got === 0) { toast('둥실! 외계인이 끌어올려 줍니다', 1600); snd(300, 0.8, 'sine', 0.06, 900); flashFx('#48ff7a', 0.25); } got += dt; Fl.y += 2.4 * dt; Fl.V = Math.max(Fl.V, aero.Vt * 0.9); Fl.status.set('외계인 광선 · 떠오르는 중', 0.2); pF.material.emissive.setHex(0x1f5a2f); } else pF.material.emissive.setHex(0); }
+        if (Math.hypot(Fl.x - u.position.x, Fl.z - u.position.z) < 1.7 && Fl.y < u.position.y) { if (got === 0) { toast('둥실! 외계인이 끌어올려 줍니다', 1600); sfx('beam'); flashFx('#48ff7a', 0.25); } got += dt; Fl.y += 2.4 * dt; Fl.V = Math.max(Fl.V, aero.Vt * 0.9); Fl.status.set('외계인 광선 · 떠오르는 중', 0.2); pF.material.emissive.setHex(0x1f5a2f); } else pF.material.emissive.setHex(0); }
       if (t > 7.4 && !bye) { bye = true; pF.material.emissive.setHex(0); toast(got > 0.5 ? '외계인이 손을 흔들며 떠났다 (+' + (got * 2.4).toFixed(0) + ' m)' : '광선을 놓쳤다', 1700); } return t > 10; } }; },
   hero() { banner('뒤에서 영웅이 날아옵니다! 옆으로 비켜 주세요'); const g = new T.Group(), h = new T.Group(), off = rnd(-1.3, 1.3); part(h, 'cyl', 0xff7a1a, 0, 0, 0, 0.3, 1.5, 0.3, 0, Math.PI / 2); part(h, 'sph', 0xf2c6a0, 1.0, 0.05, 0, 0.27, 0.27, 0.27); part(h, 'box', 0x2b2b2b, 1.12, 0.1, 0, 0.2, 0.1, 0.5); part(h, 'box', 0x7a4b2e, 0.95, 0.27, 0, 0.4, 0.14, 0.44); seg(h, [0.6, -0.05, 0.22], [1.7, 0.0, 0.2], 0.09, 0xff7a1a); part(h, 'sph', 0x18b5a4, 1.72, 0, 0.2, 0.13, 0.13, 0.13); seg(h, [0.5, -0.1, -0.22], [0.1, -0.3, -0.35], 0.09, 0xff7a1a); seg(h, [-0.7, 0, 0.12], [-1.6, -0.05, 0.14], 0.11, 0x18b5a4); seg(h, [-0.7, 0, -0.12], [-1.6, -0.05, -0.14], 0.11, 0x18b5a4); part(h, 'box', 0xffd84a, 0.2, 0.0, 0, 0.3, 0.62, 0.62); const cape = []; for (let i = 0; i < 5; i++) cape.push(part(h, 'box', 0x18b5a4, 0.3 - i * 0.42, 0.34, 0, 0.44, 0.04, 1.1 - i * 0.08)); g.add(h); h.position.set(Fl.x - 55, Fl.y + 0.5, Fl.z + off); sceneB.add(g); let hit = false; snd(160, 1.6, 'sawtooth', 0.04, 900);
     return { g, upd(dt, t) { h.position.x += (Fl.V + 30) * dt; if (h.position.x < Fl.x - 12) h.position.y += (Fl.y + 0.5 - h.position.y) * dt * 3; cape.forEach((c, i) => { c.position.y = 0.34 + Math.sin(t * 22 - i * 0.9) * 0.05 * i; }); if (Math.random() < dt * 50) spark(h.position.x - 1.8, h.position.y, h.position.z + rnd(-0.2, 0.2), 0xffd84a, 0.1, 0.4, -4, 0, 0);
-      if (!hit && h.position.x > Fl.x - 0.5) { hit = true; const dz = Fl.z - h.position.z, s = Math.sign(dz) || 1; for (let i = 0; i < 24; i++) { const a = i / 24 * 6.283; spark(h.position.x, h.position.y + Math.sin(a) * 0.4, h.position.z + Math.cos(a) * 0.4, 0xffffff, 0.14, 0.6, 2, Math.sin(a) * 9, Math.cos(a) * 9); } snd(80, 0.5, 'square', 0.09, 30);
+      if (!hit && h.position.x > Fl.x - 0.5) { hit = true; const dz = Fl.z - h.position.z, s = Math.sign(dz) || 1; for (let i = 0; i < 24; i++) { const a = i / 24 * 6.283; spark(h.position.x, h.position.y + Math.sin(a) * 0.4, h.position.z + Math.cos(a) * 0.4, 0xffffff, 0.14, 0.6, 2, Math.sin(a) * 9, Math.cos(a) * 9); } sfx('boom'); ring(h.position.x, h.position.y, h.position.z, 0xffe9a0, 7, 0.6);
         if (!(Fl.inv > 0) && Math.abs(dz) < 2.1 && Math.abs(Fl.y - h.position.y) < 1.8) { Fl.z += s * 0.5; Fl.psi += s * 0.25; knock(0.85, s * 15, rnd(-3, 3), '영웅의 충격파에 빙글빙글 날아갔다!', '#ffd84a', 0.9); Fl.status.set('충격파', 2.5); } else toast('영웅이 옆을 스쳐 지나갔다', 1300); }
       return h.position.x > Fl.x + 110; } }; },
   storm() { banner('먹구름! 비 기둥을 옆으로 돌아가세요'); const g = new T.Group(), x = Fl.x + Fl.V * 3.4 + 6, z = Fl.z + rnd(-2.5, 2.5), top = Math.max(Fl.y + 7, 14), cl = cloud(g, x, top, z, 2.4, darkCloud); cloud(g, x + 2, top + 1.5, z + 2, 1.8, darkCloud); const rain = part(g, 'cyl', rainMat, x, top / 2, z, 6, top, 6), streaks = []; for (let i = 0; i < 40; i++) streaks.push(part(g, 'box', rainMat, x + rnd(-5.5, 5.5), rnd(0, top), z + rnd(-5.5, 5.5), 0.03, 0.9, 0.03)); sceneB.add(g); let t = 0, zap = 0, struck = false;
     return { g, upd(dt) { t += dt; streaks.forEach(s => { s.position.y -= 16 * dt; if (s.position.y < 0) s.position.y = top; }); const inside = Math.hypot(Fl.x - x, Fl.z - z) < 6 && Fl.y < top;
       if (inside) { Fl.inRain = true; Fl.wet = Math.min(0.7, Fl.wet + dt * 0.4); zap += dt; Fl.q += (Math.random() - 0.5) * 6 * dt; if (Math.random() < dt * 25) spark(Fl.x + rnd(-0.5, 0.5), Fl.y + 0.3, Fl.z + rnd(-0.5, 0.5), 0xbfd6ff, 0.05, 0.3, 0, -3, 0);
-        if (!struck && zap > 0.9) { struck = true; seg(g, [x, top, z], [Fl.x + 0.5, Fl.y + 3, Fl.z], 0.07, glowMat, false); seg(g, [Fl.x + 0.5, Fl.y + 3, Fl.z], [Fl.x, Fl.y, Fl.z], 0.07, glowMat, false); setTimeout(() => { g.children.slice(-2).forEach(m => { m.visible = false; }); }, 180); Fl.smoke = 1; Fl.Cd0 += 0.015; pF.material.color.set(0xb8b0a0); Fl.status.set('번개에 그을림', Infinity); knock(0.75, rnd(-10, 10), rnd(-5, 2), '번쩍! 번개에 맞았다', '#fff', 1); snd(60, 0.9, 'sawtooth', 0.1, 25); } }
+        if (!struck && zap > 0.9) { struck = true; sfx('thunder'); seg(g, [x, top, z], [Fl.x + 0.5, Fl.y + 3, Fl.z], 0.07, glowMat, false); seg(g, [Fl.x + 0.5, Fl.y + 3, Fl.z], [Fl.x, Fl.y, Fl.z], 0.07, glowMat, false); setTimeout(() => { g.children.slice(-2).forEach(m => { m.visible = false; }); }, 180); Fl.smoke = 1; Fl.Cd0 += 0.015; pF.material.color.set(0xb8b0a0); Fl.status.set('번개에 그을림', Infinity); knock(0.75, rnd(-10, 10), rnd(-5, 2), '번쩍! 번개에 맞았다', '#fff', 1); } }
       return Fl.x > x + 40 || t > 14; } }; }
 };
 const WEIGHT = { bird: 3, gust: 2, jet: 1, poop: 2, ufo: 2, hero: 2, storm: 2 }; let lastSpoil = '';
 function spawnEvent() { const bag = []; for (const k in WEIGHT) if (k !== lastSpoil) for (let i = 0; i < WEIGHT[k]; i++) bag.push(k); const k = window.__pp.force || bag[Math.floor(Math.random() * bag.length)]; lastSpoil = k; if (SPOIL[k]) { const ev = SPOIL[k](); ev.main = true; events.push(ev); } }
 
 /* ---- audio ---- */
-let actx = null; function snd(f, d, type, vol, slide) { try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime; o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(slide, t + d); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(g).connect(actx.destination); o.start(t); o.stop(t + d); } catch (e) {} }
+/* ---- audio: small synth with a shared reverb, a wind bed that follows airspeed, and named effects ---- */
+const AU = { ctx: null, on: true }; try { AU.on = localStorage.getItem('paper-plane-sound') !== 'off'; } catch (e) {}
+function audio() {
+  if (!AU.on) return null;
+  if (!AU.ctx) { try { const c = AU.ctx = new (window.AudioContext || window.webkitAudioContext)(), comp = c.createDynamicsCompressor(); AU.master = c.createGain(); AU.master.gain.value = 0.9; AU.master.connect(comp); comp.connect(c.destination);
+      const len = Math.floor(c.sampleRate * 1.7), ir = c.createBuffer(2, len, c.sampleRate); for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.8); }
+      AU.rev = c.createConvolver(); AU.rev.buffer = ir; const rg = c.createGain(); rg.gain.value = 0.4; AU.rev.connect(rg); rg.connect(AU.master);
+      const nb = c.createBuffer(1, c.sampleRate * 2, c.sampleRate), nd = nb.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1; AU.noise = nb;
+      const ws = c.createBufferSource(); ws.buffer = nb; ws.loop = true; AU.windF = c.createBiquadFilter(); AU.windF.type = 'bandpass'; AU.windF.Q.value = 0.6; AU.windF.frequency.value = 400; AU.windG = c.createGain(); AU.windG.gain.value = 0; ws.connect(AU.windF); AU.windF.connect(AU.windG); AU.windG.connect(AU.master); ws.start();
+    } catch (e) { AU.ctx = null; return null; } }
+  if (AU.ctx.state === 'suspended') AU.ctx.resume(); return AU.ctx;
+}
+function out(node, rev) { node.connect(AU.master); if (rev) { const s = AU.ctx.createGain(); s.gain.value = rev; node.connect(s); s.connect(AU.rev); } }
+function tone(f, d, o) { const c = audio(); if (!c) return; o = o || {}; const t = c.currentTime + (o.at || 0), os = c.createOscillator(), g = c.createGain(); os.type = o.type || 'sine'; os.frequency.setValueAtTime(f, t); if (o.to) os.frequency.exponentialRampToValueAtTime(o.to, t + d); if (o.vib) { const l = c.createOscillator(), lg = c.createGain(); l.frequency.value = o.vib; lg.gain.value = f * 0.03; l.connect(lg); lg.connect(os.frequency); l.start(t); l.stop(t + d); }
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(o.vol || 0.08, t + (o.attack || 0.006)); g.gain.exponentialRampToValueAtTime(0.0001, t + d); os.connect(g); out(g, o.rev === undefined ? 0.3 : o.rev); os.start(t); os.stop(t + d + 0.02); }
+function hiss(d, o) { const c = audio(); if (!c) return; o = o || {}; const t = c.currentTime + (o.at || 0), n = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain(); n.buffer = AU.noise; n.loop = true; f.type = o.type || 'bandpass'; f.Q.value = o.q || 1; f.frequency.setValueAtTime(o.f0 || 1000, t); if (o.f1) f.frequency.exponentialRampToValueAtTime(o.f1, t + d);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(o.vol || 0.1, t + (o.attack || 0.008)); g.gain.exponentialRampToValueAtTime(0.0001, t + d); n.connect(f); f.connect(g); out(g, o.rev === undefined ? 0.2 : o.rev); n.start(t, Math.random()); n.stop(t + d + 0.02); }
+const bell = (f, at, vol) => { tone(f, 0.9, { at, vol: vol || 0.07, rev: 0.6 }); tone(f * 2.76, 0.5, { at, vol: (vol || 0.07) * 0.35, rev: 0.6 }); };
+const SFX = {
+  fold() { hiss(0.07, { vol: 0.22, f0: 3200, f1: 1400, q: 0.7 }); hiss(0.06, { vol: 0.16, f0: 5200, f1: 2600, at: 0.045, q: 0.9 }); tone(180, 0.05, { vol: 0.05, to: 90, rev: 0.1 }); },
+  click() { tone(900, 0.04, { type: 'triangle', vol: 0.04, to: 600, rev: 0.1 }); },
+  throw() { hiss(0.55, { vol: 0.3, f0: 300, f1: 2600, q: 0.8, attack: 0.05, rev: 0.4 }); tone(140, 0.25, { vol: 0.08, to: 60 }); },
+  hit() { tone(170, 0.28, { vol: 0.2, to: 45, rev: 0.25 }); hiss(0.14, { vol: 0.28, f0: 2400, f1: 500, q: 0.6 }); },
+  boom() { tone(90, 0.7, { vol: 0.26, to: 28, rev: 0.5 }); hiss(0.6, { vol: 0.25, type: 'lowpass', f0: 900, f1: 120, rev: 0.6 }); },
+  splat() { hiss(0.22, { vol: 0.3, type: 'lowpass', f0: 1800, f1: 250 }); tone(260, 0.2, { vol: 0.1, to: 80 }); },
+  dodge() { hiss(0.3, { vol: 0.2, f0: 700, f1: 3600, q: 1.2 }); tone(500, 0.2, { type: 'triangle', vol: 0.05, to: 1100 }); },
+  land() { tone(120, 0.22, { vol: 0.16, to: 50, rev: 0.2 }); hiss(0.35, { vol: 0.14, f0: 2600, f1: 900, q: 0.6, at: 0.03 }); },
+  lift() { [523, 659, 784, 1047].forEach((f, i) => bell(f, i * 0.07, 0.045)); },
+  beam() { tone(330, 1.6, { vol: 0.06, to: 660, vib: 6, rev: 0.6 }); tone(495, 1.6, { vol: 0.035, to: 990, vib: 6.5, rev: 0.6 }); },
+  gust() { hiss(2.8, { vol: 0.22, f0: 250, f1: 900, q: 0.5, attack: 0.6, rev: 0.3 }); },
+  jet() { hiss(3.2, { vol: 0.3, type: 'lowpass', f0: 300, f1: 1400, attack: 1.2, rev: 0.4 }); tone(70, 3, { type: 'sawtooth', vol: 0.05, to: 150, attack: 1 }); },
+  thunder() { hiss(2.2, { vol: 0.5, type: 'lowpass', f0: 500, f1: 60, rev: 0.8 }); tone(55, 1.4, { vol: 0.2, to: 30, rev: 0.6 }); hiss(0.08, { vol: 0.4, f0: 5000, f1: 1500 }); },
+  mile() { bell(880, 0, 0.06); bell(1319, 0.09, 0.05); },
+  record() { [523, 659, 784, 1047, 1319].forEach((f, i) => bell(f, i * 0.1, 0.07)); },
+  save() { bell(660, 0, 0.05); bell(990, 0.08, 0.04); },
+  flap() { hiss(0.12, { vol: 0.08, f0: 900, f1: 500, q: 2 }); }
+};
+function sfx(n) { if (audio() && SFX[n]) SFX[n](); }
+function snd(f, d, type, vol, slide) { tone(f, d, { type: type === 'square' || type === 'sawtooth' ? 'triangle' : type, vol: (vol || 0.05) * 1.3, to: slide }); }
+// soft generative melody while flying, plus the wind bed
+const SCALE = [392, 440, 523, 587, 659, 784, 880, 1047]; let musT = 0, musI = 3;
+function ambience(dt) { if (!AU.ctx || !AU.on) return; const fly = Fl.flying, t = AU.ctx.currentTime; AU.windG.gain.setTargetAtTime(fly ? clamp(Fl.V / 13, 0.05, 1) * 0.2 : mode === 'aim' ? 0.03 : 0, t, 0.25); AU.windF.frequency.setTargetAtTime(280 + (fly ? Fl.V : 2) * 130, t, 0.25);
+  if (fly && (musT -= dt) < 0) { musT = Math.random() < 0.25 ? 0.84 : 0.42; musI = clamp(musI + Math.round(rnd(-2.4, 2.4)), 0, SCALE.length - 1); tone(SCALE[musI], 0.7, { type: 'triangle', vol: 0.022, rev: 0.9, attack: 0.02 }); if (Math.random() < 0.3) tone(SCALE[musI] / 2, 1.2, { vol: 0.02, rev: 0.9, attack: 0.05 }); } }
+function setSound(on) { AU.on = on; try { localStorage.setItem('paper-plane-sound', on ? 'on' : 'off'); } catch (e) {} if (AU.ctx) AU.master.gain.setTargetAtTime(on ? 0.9 : 0, AU.ctx.currentTime, 0.05); document.querySelectorAll('.bSound').forEach(b => { b.textContent = on ? '소리 켬' : '소리 끔'; }); if (on) sfx('click'); }
 
 /* ================= loop ================= */
 const camPos = V3(0, H0 + 1.6, 0), camLook = V3(10, H0 + 1.4, 0); let last = 0;
@@ -812,7 +888,7 @@ function flyFrame(dt) {
     camPos.set(0, H0 + 1.62, 0); camLook.set(10, H0 + 1.2, 0); camB.position.copy(camPos); camB.lookAt(camLook);
   } else if (Fl.flying) {
     control(dt); updWind(dt); if (Fl.abduct > 0) abductStep(dt); else { const n = Math.max(4, Math.ceil(dt * 400)); for (let i = 0; i < n; i++) physics(dt / n); } Fl.t += dt; Fl.maxY = Math.max(Fl.maxY, Fl.y); placePlane();
-    const d = Math.hypot(Fl.x - 0.6, Fl.z); $('dist').textContent = d.toFixed(1) + ' m'; $('sub').textContent = Fl.t.toFixed(1) + '초 · 높이 ' + Math.max(0, Fl.y).toFixed(1) + ' m · ' + Fl.V.toFixed(1) + ' m/s';
+    const d = Math.hypot(Fl.x - 0.6, Fl.z); $('dist').textContent = d.toFixed(1) + ' m'; if (d >= mile + 50) { mile = Math.floor(d / 50) * 50; popUp(mile + ' m!'); sfx('mile'); } if (!recordHit && record > 20 && d > record) { recordHit = true; popUp('최고 기록 돌파!', true); sfx('record'); for (let i = 0; i < 40; i++) spark(Fl.x + rnd(-1, 1), Fl.y + rnd(0, 1), Fl.z + rnd(-1, 1), [0xffd84a, 0xe2463f, 0x2456d6, 0x18b5a4][i % 4], 0.07, rnd(0.8, 1.6), rnd(-3, 5), rnd(1, 6), rnd(-4, 4), 5, 0, false, 1); } $('sub').textContent = Fl.t.toFixed(1) + '초 · 높이 ' + Math.max(0, Fl.y).toFixed(1) + ' m · ' + Fl.V.toFixed(1) + ' m/s';
     if (Fl.x > nextEvt && Fl.y > 2.5 && !events.some(e => e.main)) { nextEvt = Fl.x + rnd(50, 85); spawnEvent(); } // one spoiler at a time, well spaced out
     const gy = Fl.x < 0 && Math.abs(Fl.z) < 23 ? H0 + 0.3 : 0;
     if (Fl.y <= gy + 0.05) { Fl.y = gy + 0.05; placePlane(); endFlight(gy ? '옥상에 떨어졌다' : '착륙!'); }
@@ -820,12 +896,15 @@ function flyFrame(dt) {
     updateChunks(Fl.x);
     const cp = Math.cos(Fl.psi), sp = Math.sin(Fl.psi), want = V3(Fl.x - cp * 1.5, Math.max(Fl.y + 0.95, 0.5), Fl.z - sp * 1.5); camPos.lerp(want, Math.min(1, dt * 5)); camLook.lerp(V3(Fl.x + cp * 4, Fl.y, Fl.z + sp * 4), Math.min(1, dt * 7)); camB.position.copy(camPos); if (shake > 0) camB.position.add(V3(rnd(-1, 1), rnd(-1, 1), rnd(-1, 1)).multiplyScalar(shake * 0.22)); camB.lookAt(camLook); if (shake > 0) camB.rotation.z += rnd(-1, 1) * shake * 0.06;
   }
+  for (const t of waterTexs) { t.offset.y = flyT * 0.012; t.offset.x = Math.sin(flyT * 0.25) * 0.03; } sunB.target.position.set(camB.position.x + 14, 0, camB.position.z); sunB.position.set(camB.position.x - 26, 70, camB.position.z - 30); pF.castShadow = pB.castShadow = true;
+  { const base = camB.aspect < 1 ? 78 : 62, want = base + (Fl.flying ? clamp((Fl.V - 4) * 1.3, 0, 11) : 0); if (Math.abs(camB.fov - want) > 0.05) { camB.fov += (want - camB.fov) * Math.min(1, dt * 3); camB.updateProjectionMatrix(); } } ambience(dt);
   updFx(dt); sock.userData.c.rotation.set(0, -W0.dir + Math.sin(flyT * 3) * 0.12, -(1 - Math.min(1, W0.sp / 3)) * 1.2 + Math.sin(flyT * 7) * 0.05 * W0.sp);
   for (let i = events.length - 1; i >= 0; i--) if (events[i].upd(dt, flyT)) { sceneB.remove(events[i].g); events.splice(i, 1); }
   ground.position.set(Math.round(camB.position.x / 8.46) * 8.46, 0, Math.round(camB.position.z / 8.46) * 8.46); far.position.set(camB.position.x, 0, camB.position.z);
 }
 function frame(t) {
-  const dt = Math.min(0.05, (t - last) / 1000 || 0.016); last = t;
+  let dt = Math.min(0.05, (t - last) / 1000 || 0.016); last = t; const raw = dt; if (hitStop > 0) { hitStop -= raw; dt *= 0.12; } // a beat of slow motion on impact
+  if (mode === 'fly') { perfT += raw; if (++perfN >= 90) { const avg = perfT / perfN; perfT = perfN = 0; if (avg > 0.03 && quality > 0) { quality--; if (quality === 1) sunB.castShadow = false; else { renderer.setPixelRatio(1); resize(); } } } }
   const W = canvas.clientWidth, H = canvas.clientHeight; renderer.setScissorTest(false); renderer.setViewport(0, 0, W, H);
   if (mode === 'fold' || mode === 'shape') { renderer.render(sceneA, camA);
     if (mode === 'fold' && drag) { const lp = $('loupe').getBoundingClientRect(), cr = canvas.getBoundingClientRect(), x = lp.left - cr.left + 2, y = H - (lp.bottom - cr.top) + 2, w = lp.width - 4, h = lp.height - 4;
@@ -835,7 +914,9 @@ function frame(t) {
 }
 function resize() { const w = canvas.clientWidth, h = canvas.clientHeight; renderer.setSize(w, h, false); camB.aspect = w / h; camB.fov = w < h ? 78 : 62; camB.updateProjectionMatrix(); setCam(); }
 addEventListener('resize', resize);
-window.__pp = { force: null, hangar, control, W0, paper, applyPaper, vo, ctl, dodge, get calls() { return renderer.info.render.calls; }, get trail() { return trail; }, get events() { return events; }, get ops() { return ops; }, set ops(v) { ops = v; refresh(); }, get aero() { return aero; }, Fl, launch, build, analyze, setMode, PRESET, get cur() { return cur; }, get mode() { return mode; }, physics };
+window.__pp = { force: null, AU, sparks, knock, ring, spark, popUp, get quality() { return quality; }, hangar, control, W0, paper, applyPaper, vo, ctl, dodge, get calls() { return renderer.info.render.calls; }, get trail() { return trail; }, get events() { return events; }, get ops() { return ops; }, set ops(v) { ops = v; refresh(); }, get aero() { return aero; }, Fl, launch, build, analyze, setMode, PRESET, get cur() { return cur; }, get mode() { return mode; }, physics };
+document.querySelectorAll('.bSound').forEach(b => { b.textContent = AU.on ? '소리 켬' : '소리 끔'; b.onclick = () => setSound(!AU.on); });
+document.addEventListener('click', e => { const b = e.target.closest('button'); if (b && !b.classList.contains('bSound')) sfx('click'); });
 applyPaper(); setMode('fold'); resize(); requestAnimationFrame(frame);
 })();
 </script>
