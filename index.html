@@ -141,7 +141,7 @@ button.pri { background: var(--blue); color: #fff; } button.on { background: var
   <div id="alt" hidden><i id="altFill"></i><span>높이</span></div>
   <div id="flash"></div><div id="splat"></div>
   <div id="banner" hidden></div>
-  <div id="wind" hidden><svg id="windArrow" viewBox="0 0 24 24" width="34" height="34" aria-hidden="true"><path d="M12 2 L19 12 H14.5 V22 H9.5 V12 H5 Z" fill="#2456d6" stroke="#17264d" stroke-width="1.5" stroke-linejoin="round"/></svg><div><span class="k">바람 (위쪽이 던지는 방향)</span><span id="windTxt"></span></div></div>
+  <div id="wind" hidden><svg id="windArrow" viewBox="0 0 24 24" width="34" height="34" aria-hidden="true"><path d="M12 2 L19 12 H14.5 V22 H9.5 V12 H5 Z" fill="#2456d6" stroke="#17264d" stroke-width="1.5" stroke-linejoin="round"/></svg><div><span class="k">바람 (위쪽이 앞) · 계속 바뀝니다</span><span id="windTxt"></span></div></div>
   <div id="aim" class="gut" hidden>
     <p class="hint">아래로 당겼다가 위로 빠르게 밀어 던지세요</p>
     <div class="row"><label for="ang">던지는 각도</label><input id="ang" type="range" min="-5" max="40" value="10"><b id="angV">10°</b><span>당김</span><div id="pow"><i id="powFill"></i></div><button id="bRefold" type="button">다시 접기</button></div>
@@ -599,15 +599,19 @@ function buildPlane() {
 }
 
 /* ---- flight state & physics ---- */
-const W0 = { x: 0, z: 0, sp: 0, dir: 0 };
+const W0 = { x: 0, z: 0, sp: 0, dir: 0, tdir: 0, tsp: 0, next: 5 };
 const sock = new T.Group(); { seg(sock, [0, -0.6, 0], [0, 1.9, 0], 0.035, 0xdddddd); const c = new T.Group(); [0xe2463f, 0xffffff, 0xe2463f, 0xffffff].forEach((col, i) => part(c, 'cyl', col, 0.2 + i * 0.3, 0, 0, 0.17 - i * 0.03, 0.3, 0.17 - i * 0.03, 0, Math.PI / 2)); c.position.y = 1.85; sock.add(c); sock.userData.c = c; sock.position.set(1.7, H0 + 0.5, -2.3); sceneB.add(sock); }
-function newWind() { W0.sp = Math.random() < 0.2 ? 0 : rnd(0.4, 3.6); W0.dir = rnd(-Math.PI, Math.PI); W0.x = Math.cos(W0.dir) * W0.sp; W0.z = Math.sin(W0.dir) * W0.sp;
-  const c = Math.cos(W0.dir), kind = W0.sp < 0.3 ? '바람 없음' : c > 0.5 ? '뒷바람 (더 멀리)' : c < -0.5 ? '맞바람 (덜 나감)' : W0.z > 0 ? '왼쪽에서 부는 옆바람' : '오른쪽에서 부는 옆바람';
-  $('windArrow').style.transform = 'rotate(' + (W0.dir * 180 / Math.PI) + 'deg)'; $('windArrow').style.opacity = W0.sp < 0.3 ? 0.25 : 1; $('windTxt').innerHTML = '<b>' + W0.sp.toFixed(1) + ' m/s</b> ' + kind; }
+// wind: gentle, almost never a headwind, and it drifts to a new direction and strength every few seconds
+function pickWind() { const head = Math.random() < 0.02, deg = head ? (Math.random() < 0.5 ? -1 : 1) * rnd(125, 180) : (Math.random() + Math.random() - 1) * 100; W0.tdir = deg * Math.PI / 180; W0.tsp = Math.random() < 0.15 ? rnd(0, 0.3) : rnd(0.4, 2.2); W0.next = rnd(4, 8); }
+function showWind() { W0.x = Math.cos(W0.dir) * W0.sp; W0.z = Math.sin(W0.dir) * W0.sp;
+  const c = Math.cos(W0.dir), kind = W0.sp < 0.3 ? '바람 없음' : c > 0.5 ? '뒷바람 (더 멀리)' : c < -0.5 ? '맞바람 (덜 나감)' : W0.z > 0 ? '왼쪽에서 부는 옆바람' : '오른쪽에서 부는 옆바람', txt = '<b>' + W0.sp.toFixed(1) + ' m/s</b> ' + kind;
+  $('windArrow').style.transform = 'rotate(' + (W0.dir * 180 / Math.PI).toFixed(0) + 'deg)'; $('windArrow').style.opacity = W0.sp < 0.3 ? 0.25 : 1; if (txt !== showWind.last) { showWind.last = txt; $('windTxt').innerHTML = txt; } }
+function newWind() { pickWind(); W0.dir = W0.tdir; W0.sp = W0.tsp; showWind(); }
+function updWind(dt) { if ((W0.next -= dt) < 0) pickWind(); const k = Math.min(1, dt * 0.45); W0.dir += (W0.tdir - W0.dir) * k; W0.sp += (W0.tsp - W0.sp) * k; showWind(); }
 const Fl = {}; let flyT = 0, events = [], nextEvt = 0, keyL = false, keyR = false, keyU = false, keyD = false, wind = V3(0, 0, 0), gustT = 0, best = 0;
 function resetFlight() {
   buildPlane(); newWind(); ctl.cd = ctl.dash = ctl.spin = ctl.u = ctl.v = 0; Object.assign(Fl, { inv: 0, bias: 0, sk: 1, smoke: 0, wet: 0, abduct: 0, poops: 0, inRain: false, status: new Map(), x: 0.6, y: H0 + 1.45, z: 0, V: 0, gam: 0, psi: 0, th: 0, q: 0, phi: 0, pr: 0, t: 0, maxY: 0, flying: false, mass: aero.mass, sm: aero.sm, Cd0: aero.Cd0, pull: 0 });
-  events.forEach(e => sceneB.remove(e.g)); events = []; sparks.forEach(sp => sceneB.remove(sp.m)); sparks.length = 0; pB.material.color.set(0xffffff); $('splat').innerHTML = ''; nextEvt = 16; wind.set(0, 0, 0); gustT = 0; updateChunks(0); hand.visible = true; $('dist').textContent = '0.0 m'; $('sub').textContent = '';
+  events.forEach(e => sceneB.remove(e.g)); events = []; sparks.forEach(sp => sceneB.remove(sp.m)); sparks.length = 0; pB.material.color.set(0xffffff); $('splat').innerHTML = ''; nextEvt = rnd(32, 48); wind.set(0, 0, 0); gustT = 0; updateChunks(0); hand.visible = true; $('dist').textContent = '0.0 m'; $('sub').textContent = '';
 }
 function physics(dt) {
   const A = aero, m = Fl.mass * (1 + Fl.wet), g = 9.81, V = Math.max(Fl.V, 0.6), qd = 0.6 * V * V; let al = Fl.th - Fl.gam; al = Math.atan2(Math.sin(al), Math.cos(al));
@@ -743,7 +747,7 @@ const SPOIL = {
       return Fl.x > x + 40 || t > 14; } }; }
 };
 const WEIGHT = { bird: 3, gust: 2, jet: 1, poop: 2, ufo: 2, hero: 2, storm: 2 }; let lastSpoil = '';
-function spawnEvent() { const bag = []; for (const k in WEIGHT) if (k !== lastSpoil) for (let i = 0; i < WEIGHT[k]; i++) bag.push(k); const k = window.__pp.force || bag[Math.floor(Math.random() * bag.length)]; lastSpoil = k; if (SPOIL[k]) events.push(SPOIL[k]()); }
+function spawnEvent() { const bag = []; for (const k in WEIGHT) if (k !== lastSpoil) for (let i = 0; i < WEIGHT[k]; i++) bag.push(k); const k = window.__pp.force || bag[Math.floor(Math.random() * bag.length)]; lastSpoil = k; if (SPOIL[k]) { const ev = SPOIL[k](); ev.main = true; events.push(ev); } }
 
 /* ---- audio ---- */
 let actx = null; function snd(f, d, type, vol, slide) { try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime; o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(slide, t + d); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(g).connect(actx.destination); o.start(t); o.stop(t + d); } catch (e) {} }
@@ -757,9 +761,9 @@ function flyFrame(dt) {
     planeG.position.sub(gripB.clone().applyEuler(planeG.rotation)).add(V3(0, 0, 0)); hand.position.set(Fl.x, Fl.y, Fl.z); hand.rotation.set(0, 0, Fl.th * 0.6);
     camPos.set(0, H0 + 1.62, 0); camLook.set(10, H0 + 1.2, 0); camB.position.copy(camPos); camB.lookAt(camLook);
   } else if (Fl.flying) {
-    control(dt); if (Fl.abduct > 0) abductStep(dt); else { const n = Math.max(4, Math.ceil(dt * 400)); for (let i = 0; i < n; i++) physics(dt / n); } Fl.t += dt; Fl.maxY = Math.max(Fl.maxY, Fl.y); placePlane();
+    control(dt); updWind(dt); if (Fl.abduct > 0) abductStep(dt); else { const n = Math.max(4, Math.ceil(dt * 400)); for (let i = 0; i < n; i++) physics(dt / n); } Fl.t += dt; Fl.maxY = Math.max(Fl.maxY, Fl.y); placePlane();
     const d = Math.hypot(Fl.x - 0.6, Fl.z); $('dist').textContent = d.toFixed(1) + ' m'; $('sub').textContent = Fl.t.toFixed(1) + '초 · 높이 ' + Math.max(0, Fl.y).toFixed(1) + ' m · ' + Fl.V.toFixed(1) + ' m/s';
-    if (Fl.x > nextEvt && Fl.y > 2.5 && Fl.abduct <= 0) { nextEvt = Fl.x + rnd(20, 34); spawnEvent(); }
+    if (Fl.x > nextEvt && Fl.y > 2.5 && !events.some(e => e.main)) { nextEvt = Fl.x + rnd(50, 85); spawnEvent(); } // one spoiler at a time, well spaced out
     const gy = Fl.x < 0 && Math.abs(Fl.z) < 23 ? H0 + 0.3 : 0;
     if (Fl.y <= gy + 0.05) { Fl.y = gy + 0.05; placePlane(); endFlight(gy ? '옥상에 떨어졌다' : '착륙!'); }
     else for (const c of colliders) { const hit = c.h ? Math.abs(Fl.x - c.x) < (c.bx || c.r) && Math.abs(Fl.z - c.z) < c.r && Fl.y < c.h : Math.hypot(Fl.x - c.x, Fl.y - c.y, Fl.z - c.z) < c.r; if (hit) { puff(Fl.x, Fl.y, Fl.z, 0xffffff, 14); flashFx('#fff', 0.4); shake = 0.6; endFlight('장애물에 걸렸다!'); break; } }
