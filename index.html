@@ -23,10 +23,18 @@ body { background: #cfe0f7; color: var(--ink); font-family: var(--text); overflo
   background-image: linear-gradient(var(--rule) 1px, transparent 1px), linear-gradient(90deg, var(--rule) 1px, transparent 1px); background-size: 16px 16px; }
 .sheet .hint { font: 700 18px/1.3 var(--hand); margin: 0 0 8px; background: var(--paper); display: inline-block; padding: 0 4px; }
 .btns { display: flex; flex-wrap: wrap; gap: 6px; }
+.sheet .tog { position: absolute; right: max(12px, env(safe-area-inset-right, 0px)); top: -37px; padding: 5px 10px; font-size: 12px; }
+#foldUI.min { padding-block: 4px; } #foldUI.min .hint, #foldUI.min .btns { display: none; }
+@media (max-width: 700px) { #foldUI .hint { font-size: 16px; margin-bottom: 6px; } #foldUI .btns { flex-wrap: nowrap; overflow-x: auto; touch-action: pan-x; padding: 0 4px 8px 0; } #foldUI .btns button { flex: none; } }
 button { font: 600 13px/1.3 var(--text); color: var(--ink); background: var(--paper); border: 1.5px solid var(--ink); padding: 8px 11px; cursor: pointer; border-radius: 3px; box-shadow: 2px 2px 0 var(--ink); }
 button:active { transform: translate(2px, 2px); box-shadow: none; }
 button:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
 button.pri { background: var(--blue); color: #fff; } button.on { background: var(--mark); } button:disabled { opacity: .4; }
+#stylePop { position: absolute; left: 0; right: 0; top: 44px; display: flex; justify-content: center; pointer-events: none; }
+.pop { pointer-events: auto; background: var(--paper); border: 2px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); padding: 10px 12px; max-width: 440px; width: 100%; display: grid; gap: 8px; }
+.prow { display: grid; grid-template-columns: 38px 1fr; gap: 8px; align-items: center; font-size: 13px; } .sw { display: flex; flex-wrap: wrap; gap: 5px; min-width: 0; }
+.sw button { width: 30px; height: 30px; padding: 0; border-radius: 50%; box-shadow: none; border: 2px solid var(--ink); } .sw button.txt { width: auto; height: auto; border-radius: 3px; padding: 4px 9px; font-size: 12px; }
+.sw button.on { outline: 3px solid var(--blue); outline-offset: 2px; } .sw button.txt.on { background: var(--mark); }
 #shapeUI { max-height: 46%; overflow-y: auto; }
 .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; } .cols > div { min-width: 0; }
 @media (max-width: 640px) { .cols { grid-template-columns: 1fr; } }
@@ -81,17 +89,30 @@ button.pri { background: var(--blue); color: #fff; } button.on { background: var
   <div id="steps"><span data-s="fold" class="on">1 접기</span><span data-s="shape">2 모양 잡기</span><span data-s="fly">3 날리기</span></div>
 
   <div class="sheet gut" id="foldUI">
-    <p class="hint" id="foldHint">점이 찍힌 모서리나 종이 위 아무 곳을 잡고 끌어 보세요. 노란 점이 잡은 곳, 빨간 고리가 닿을 곳입니다.</p>
+    <button id="bMin" class="tog" type="button" aria-expanded="true">안내판 접기 ▾</button>
+    <p class="hint" id="foldHint">모서리나 종이 위를 잡고 끌면 접힙니다. 두 손가락으로 끌면 종이가 움직이고, 벌리면 확대됩니다.</p>
     <div class="btns">
       <button id="bUndo" type="button">되돌리기</button>
       <button id="bUnfold" type="button">펼치기 (자국 남김)</button>
       <button id="bFlip" type="button">뒤집기</button>
       <button id="bMode" type="button">겹: 잡은 겹만</button>
       <button id="bSnap" type="button" class="on">스냅 켬</button>
+      <button id="bStyle" type="button">종이 꾸미기</button>
+      <button id="bRandom" type="button">랜덤 종이</button>
+      <button id="bFit" type="button">화면 맞춤</button>
       <button id="bReset" type="button">새 종이</button>
       <button id="bDart" type="button">예시: 다트</button>
       <button id="bGlider" type="button">예시: 글라이더</button>
       <button id="bToShape" type="button" class="pri">다음: 모양 잡기</button>
+    </div>
+  </div>
+
+  <div id="stylePop" class="gut" hidden>
+    <div class="pop">
+      <div class="prow"><span>앞면</span><div class="sw" id="swF"></div></div>
+      <div class="prow"><span>뒷면</span><div class="sw" id="swB"></div></div>
+      <div class="prow"><span>무늬</span><div class="sw" id="swP"></div></div>
+      <div class="btns"><button id="bRandom2" type="button">랜덤</button><button id="bSwap" type="button">앞뒤 바꾸기</button><button id="bStyleClose" type="button" class="pri">완료</button></div>
     </div>
   </div>
 
@@ -100,8 +121,8 @@ button.pri { background: var(--blue); color: #fff; } button.on { background: var
     <div class="cols">
       <div>
         <div id="angles"></div>
-        <div class="sl"><span>왼쪽 뒤끝 휘기</span><input id="bendL" type="range" min="-100" max="100" step="5" value="55" aria-label="왼쪽 날개 뒤끝 휘기"><b id="bendLV">위 55</b></div>
-        <div class="sl"><span>오른쪽 뒤끝 휘기</span><input id="bendR" type="range" min="-100" max="100" step="5" value="55" aria-label="오른쪽 날개 뒤끝 휘기"><b id="bendRV">위 55</b></div>
+        <div class="sl"><span>왼쪽 뒤끝 휘기</span><input id="bendL" type="range" min="-100" max="100" step="5" value="30" aria-label="왼쪽 날개 뒤끝 휘기"><b id="bendLV">위 30</b></div>
+        <div class="sl"><span>오른쪽 뒤끝 휘기</span><input id="bendR" type="range" min="-100" max="100" step="5" value="30" aria-label="오른쪽 날개 뒤끝 휘기"><b id="bendRV">위 30</b></div>
       </div>
       <div>
         <div id="stats"></div>
@@ -227,14 +248,31 @@ function build(ops, previewAng) {
 function face3(f, eps) { const nz = V3(0, 0, 1).transformDirection(f.Q).multiplyScalar(eps * f.layer); return flat(f).map(p => V3(p[0], p[1], 0).applyMatrix4(f.Q).add(nz)); }
 
 /* ================= shared paper mesh ================= */
-const matFront = new T.MeshLambertMaterial({ color: 0xffffff, side: T.FrontSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
-const matBack = new T.MeshLambertMaterial({ color: 0x5b8def, side: T.BackSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+// paper look: each side has its own colour, and a pattern is printed in sheet coordinates so it folds with the paper
+const COLORS = ['#ffffff', '#fdf3c8', '#ffd84a', '#ff9f43', '#e2463f', '#ff7fa8', '#b38bff', '#5b8def', '#18b5a4', '#67b84d', '#8a5a33', '#2b3350'];
+const PATS = [['plain', '무지'], ['grid', '모눈'], ['stripe', '줄무늬'], ['dots', '물방울'], ['check', '체크'], ['star', '별'], ['wave', '물결']];
+const paper = { front: '#ffffff', back: '#5b8def', pat: 'plain' };
+try { Object.assign(paper, JSON.parse(localStorage.getItem('paper-plane-style-v1')) || {}); } catch (e) {}
+const texF = new T.CanvasTexture(Object.assign(document.createElement('canvas'), { width: 512, height: 512 })), texB = new T.CanvasTexture(Object.assign(document.createElement('canvas'), { width: 512, height: 512 }));
+function drawPaper(cv, base, pat) {
+  const x = cv.getContext('2d'), n = parseInt(base.slice(1), 16), lum = ((n >> 16) * 0.3 + ((n >> 8) & 255) * 0.59 + (n & 255) * 0.11) / 255, ink = lum > 0.6 ? 'rgba(23,38,77,.22)' : 'rgba(255,255,255,.34)';
+  x.fillStyle = base; x.fillRect(0, 0, 512, 512); x.fillStyle = x.strokeStyle = ink;
+  if (pat === 'grid') { x.lineWidth = 2; for (let i = 0; i <= 16; i++) { x.beginPath(); x.moveTo(i * 32, 0); x.lineTo(i * 32, 512); x.moveTo(0, i * 32); x.lineTo(512, i * 32); x.stroke(); } }
+  else if (pat === 'stripe') { for (let i = -8; i < 16; i++) { x.beginPath(); x.moveTo(i * 64, 0); x.lineTo(i * 64 + 28, 0); x.lineTo(i * 64 + 28 + 512, 512); x.lineTo(i * 64 + 512, 512); x.fill(); } }
+  else if (pat === 'dots') { for (let j = 0; j < 9; j++) for (let i = 0; i < 9; i++) { x.beginPath(); x.arc(i * 64 + (j % 2 ? 32 : 0), j * 64, 15, 0, 6.283); x.fill(); } }
+  else if (pat === 'check') { for (let j = 0; j < 8; j++) for (let i = 0; i < 8; i++) if ((i + j) % 2) x.fillRect(i * 64, j * 64, 64, 64); }
+  else if (pat === 'star') { for (let j = 0; j < 6; j++) for (let i = 0; i < 6; i++) { const cx = i * 90 + (j % 2 ? 60 : 15), cy = j * 90 + 30; x.beginPath(); for (let k = 0; k < 10; k++) { const a = k * 0.6283 - 1.5708, r = k % 2 ? 9 : 22; x.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); } x.fill(); } }
+  else if (pat === 'wave') { x.lineWidth = 9; for (let j = 0; j < 12; j++) { x.beginPath(); for (let i = 0; i <= 512; i += 8) x.lineTo(i, j * 46 + 20 + Math.sin(i / 512 * 6.283 * 4) * 12); x.stroke(); } }
+}
+function applyPaper() { drawPaper(texF.image, paper.front, paper.pat); drawPaper(texB.image, paper.back, paper.pat); texF.needsUpdate = texB.needsUpdate = true; try { localStorage.setItem('paper-plane-style-v1', JSON.stringify(paper)); } catch (e) {} }
+const matFront = new T.MeshLambertMaterial({ color: 0xffffff, map: texF, side: T.FrontSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+const matBack = new T.MeshLambertMaterial({ color: 0xffffff, map: texB, side: T.BackSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
 function paperGeo(faces, eps, xf) {
-  const pos = [], edge = [], map = [];
+  const pos = [], uv = [], edge = [], map = [];
   faces.forEach((f, fi) => { let v = face3(f, eps); if (xf) v = v.map(xf);
-    for (let i = 1; i < v.length - 1; i++) { pos.push(v[0].x, v[0].y, v[0].z, v[i].x, v[i].y, v[i].z, v[i + 1].x, v[i + 1].y, v[i + 1].z); map.push(fi); }
+    for (let i = 1; i < v.length - 1; i++) { pos.push(v[0].x, v[0].y, v[0].z, v[i].x, v[i].y, v[i].z, v[i + 1].x, v[i + 1].y, v[i + 1].z); for (const k of [0, i, i + 1]) uv.push(f.sp[k][0] + 0.5, f.sp[k][1] + 0.5); map.push(fi); }
     for (let i = 0; i < v.length; i++) { const a = v[i], b = v[(i + 1) % v.length]; edge.push(a.x, a.y, a.z, b.x, b.y, b.z); } });
-  const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.computeVertexNormals();
+  const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new T.Float32BufferAttribute(uv, 2)); g.computeVertexNormals();
   const e = new T.BufferGeometry(); e.setAttribute('position', new T.Float32BufferAttribute(edge, 3)); return { g, e, map };
 }
 
@@ -260,9 +298,10 @@ const cgDot = new T.Mesh(new T.SphereGeometry(0.016, 12, 8), new T.MeshBasicMate
 const arrow = new T.ArrowHelper(V3(0, 1, 0), V3(0, 0, 0), 0.5, 0x2456d6, 0.09, 0.06);
 [snapDot, gripDot, cgDot].forEach(m => { m.renderOrder = 5; }); const paperG = new T.Group(); paperG.add(meshF, meshB, edges, marks, crease, rubber, handles, grabDot, snapDot, gripDot, cgDot, arrow); sceneA.add(paperG);
 
+const vo = { x: 0, y: 0, z: 1 }, pts = new Map(); let pinch = null, panM = null; // fold view: pan offset, zoom, active pointers
 const camL = new T.PerspectiveCamera(34, 1, 0.05, 20); camL.up.set(0, 1, 0);
 let ops = [], creases = [], mode = 'fold', foldMode = 'flap', snapOn = true, cur = build([]), triMap = [], drag = null;
-let orbit = { az: 0.6, el: 0.5, d: 2.5 }, grip = null, fwdRot = 0, upFlip = false, bend = { l: 0.55, r: 0.55 }, aero = null;
+let orbit = { az: 0.6, el: 0.5, d: 2.5 }, grip = null, fwdRot = 0, upFlip = false, bend = { l: 0.3, r: 0.3 }, aero = null;
 function segClip(P, a, b) { let t0 = 0, t1 = 1; const d = [b[0] - a[0], b[1] - a[1]], s = Math.sign(polyArea(P)) || 1;
   for (let i = 0; i < P.length; i++) { const p = P[i], q = P[(i + 1) % P.length], nx = -(q[1] - p[1]) * s, ny = (q[0] - p[0]) * s, den = nx * d[0] + ny * d[1], num = nx * (a[0] - p[0]) + ny * (a[1] - p[1]);
     if (Math.abs(den) < 1e-12) { if (num < -1e-9) return null; continue; } const t = -num / den; if (den > 0) t0 = Math.max(t0, t); else t1 = Math.min(t1, t); if (t0 > t1 - 1e-6) return null; }
@@ -302,7 +341,7 @@ function setCam() {
   const w = canvas.clientWidth, h = canvas.clientHeight; camA.aspect = w / h;
   if (mode === 'fold') { // keep the paper clear of the bottom sheet and of the magnifier strip on top
     const ui = $('foldUI').offsetHeight / h, tp = (w < 700 ? 188 : 48) / h, tf = Math.tan(camA.fov * Math.PI / 360), d = Math.max(1.22 / (2 * tf * camA.aspect), 1.16 / (2 * tf * Math.max(0.2, 1 - ui - tp))), sh = (ui - tp) * d * tf;
-    camA.up.set(0, 1, 0); camA.position.set(0, -sh, d); camA.lookAt(0, -sh, 0); }
+    camA.up.set(0, 1, 0); camA.position.set(vo.x, -sh * vo.z + vo.y, d * vo.z); camA.lookAt(vo.x, -sh * vo.z + vo.y, 0); }
   else { const o = orbit, ce = Math.cos(o.el); camA.up.set(0, 0, 1); camA.position.set(o.d * ce * Math.sin(o.az), -o.d * ce * Math.cos(o.az) , o.d * Math.sin(o.el)); const ty = 0.2 - 0.3 * ($('shapeUI').offsetHeight / h) * o.d; camA.position.z += ty; camA.lookAt(0, 0, ty); }
   camA.updateProjectionMatrix();
 }
@@ -336,11 +375,13 @@ function analyze(faces) {
   let Iyy = 0, Ixx = 0, block = 0, cmI = 0, clI = 0, gam = 0, gw = 0, zwb = 0, zws = 0;
   for (const f of bf) { const m = MASS * f.A / (PS * PS); Iyy += m * (f.c.x * f.c.x + f.c.z * f.c.z + 0.00004); Ixx += m * (f.c.y * f.c.y + f.c.z * f.c.z + 0.00004); block += f.A * Math.abs(f.n.x); { const zz = Math.abs(f.n.z), inc = Math.atan2(f.n.z > 0 ? f.n.x : -f.n.x, zz); if (zz > 0.5 && Math.abs(inc) > 0.03 && Math.abs(inc) < 0.7) { cmI += f.c.x * -inc * f.A * zz; clI += f.c.y * -inc * f.A * zz; } } // a tilted flap works as a control surface, not as wing
     const nz = Math.abs(f.n.z); if (nz > 0.3 && Math.abs(f.c.y) > 0.004) { const w = f.A * nz, ny = f.n.z > 0 ? f.n.y : -f.n.y; gam += w * Math.atan(-ny * Math.sign(f.c.y) / nz); gw += w; zwb += w * f.c.z; zws += w; } }
-  const a = 2 * Math.PI * AR / (AR + 2) * 0.72, xnp = top.cx + (0.12 + 0.13 * clamp((AR - 1) / 3, 0, 1)) * c, sm = -xnp / c; // slender wings carry their lift further aft
+  const a = 2 * Math.PI * AR / (AR + 2) * 0.72, xnpK = 0.12 + 0.13 * clamp((AR - 1) / 3, 0, 1), xnp = top.cx + xnpK * c, sm = -xnp / c; // slender wings carry their lift further aft
   const A = { S, b, c, len, AR, a, sm, Cd0: 0.035 + 1.1 * block / S + 0.012 * (Math.abs(bend.l) + Math.abs(bend.r)) / 2, Cm0: 0.006 + 0.05 * (bend.l + bend.r) / 2 + clamp(a * cmI / (S * c), -0.06, 0.06), roll: 0.04 * (bend.r - bend.l) + clamp(a * clI / (S * b) * 0.5, -0.05, 0.05), Iyy: Math.max(Iyy, 3e-6), Ixx: Math.max(Ixx, 3e-6), gam: gw ? gam / gw : 0, asym: (top.pos - top.neg) / S, cgy: top.cy / b,
     yaw: side.area / S * (0.15 - side.cx / len), zw: zws ? zwb / zws : 0, mass: MASS, C, X, Y, up, bf };
   { const xr = top.x0, zl = 0.3 * len; A.warp = p => { const d = p.clone().sub(C), x = d.dot(X) * PS, y = d.dot(Y) * PS; if (x > xr + zl || Math.abs(y) < 0.008) return p; const t = (xr + zl - x) / zl; return p.addScaledVector(up, (y > 0 ? bend.l : bend.r) * 0.1 * len * t * t / PS); }; }
-  A.aTrim = A.sm > 0.005 ? clamp(A.Cm0 / (A.a * A.sm), 0, 0.5) : 0.5; const CL = Math.min(A.a * A.aTrim, 0.9); A.LD = CL / (A.Cd0 + CL * CL / (Math.PI * AR * 0.75) + (A.aTrim > 0.26 ? 0.3 : 0)); A.Vt = Math.sqrt(2 * MASS * 9.81 / (1.2 * S * Math.max(CL, 0.05)));
+  A.aStall = 0.24 + 0.1 * clamp(1.6 - AR, 0, 1); A.kPost = xnpK; // slender wings hold on a little longer; once stalled the lift sits near mid-chord
+  const est = al => { const s0 = clamp((al - A.aStall) / 0.14, 0, 1), t = s0 * s0 * (3 - 2 * s0), CL = A.a * al * (1 - t) + 0.75 * Math.sin(2 * al) * t, CD = A.Cd0 + CL * CL / (Math.PI * AR * 0.75) * (1 - t) + (1.6 * Math.sin(al) ** 2 + 0.06) * t; return [CL, CD]; };
+  A.aTrim = A.sm > 0.005 ? clamp(A.Cm0 / (A.a * A.sm), 0.01, A.aStall + 0.06) : A.aStall + 0.16; { const e = est(A.aTrim); A.LD = e[0] / e[1]; A.Vt = Math.sqrt(2 * MASS * 9.81 / (1.2 * S * Math.max(e[0], 0.05))); }
   return A;
 }
 function gripPoint() { // 3D grip position in paper units
@@ -350,7 +391,7 @@ function gripPoint() { // 3D grip position in paper units
 }
 function showStats() {
   const A = aero, g = gripPoint(); gripDot.position.copy(g); cgDot.position.copy(A.C); arrow.position.copy(A.C).addScaledVector(A.up, 0.02); arrow.setDirection(A.X); arrow.setLength(Math.max(0.3, A.len / PS * 0.7), 0.09, 0.06);
-  const st = A.sm < 0 ? '<span class="bad">불안정 · 뒤가 무거워 뒤집히며 떨어져요</span>' : A.sm < 0.03 ? '<span class="bad">아슬아슬 · 고개를 들다 실속하기 쉬워요</span>' : A.sm < 0.3 ? '<b>좋음</b>' : '<span class="bad">머리가 무거움 · 빨리 떨어져요</span>';
+  const st = A.sm < -A.kPost ? '<span class="bad">뒤가 너무 무거움 · 뒤집히며 떨어져요</span>' : A.sm < 0 ? '<span class="bad">뒤가 무거움 · 고개를 들다 실속해 뚝 떨어져요</span>' : A.sm < 0.03 ? '<span class="bad">아슬아슬 · 고개를 들다 실속하기 쉬워요</span>' : A.sm < 0.3 ? '<b>좋음</b>' : '<span class="bad">머리가 무거움 · 빨리 떨어져요</span>';
   const bal = Math.abs(A.asym) < 0.04 && Math.abs(A.cgy) < 0.02 ? '<b>좋음</b>' : '<span class="bad">한쪽으로 돌아요</span>';
   $('stats').innerHTML = '날개 면적 <b>' + (A.S * 1e4).toFixed(0) + ' cm²</b> · 날개 폭 <b>' + (A.b * 100).toFixed(1) + ' cm</b><br>앞뒤 안정성 ' + st + '<br>좌우 균형 ' + bal + (Math.abs(A.roll) > 0.012 ? ' · <span class="bad">' + (A.roll > 0 ? '오른쪽' : '왼쪽') + '으로 기울어요</span>' : '') + '<br>예상 활공비 <b>' + A.LD.toFixed(1) + '</b> · 순항 속도 <b>' + A.Vt.toFixed(1) + ' m/s</b><br><span style="color:var(--dim)">노란 점 무게중심 · 빨간 점 잡는 곳 · 파란 화살표 앞</span>';
 }
@@ -359,13 +400,20 @@ function showStats() {
 function toast(msg, ms) { const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => { t.hidden = true; }, ms || 1800); }
 canvas.addEventListener('pointerdown', e => {
   canvas.setPointerCapture(e.pointerId);
-  if (mode === 'fold') { e.preventDefault(); if (drag) return; const touch = e.pointerType !== 'mouse', { p } = planePoint(e); let g = snap(p, touch ? 0.1 : 0.05);
+  if (mode === 'fold') { e.preventDefault(); pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (e.pointerType === 'mouse' && e.button !== 0) { panM = { x: e.clientX, y: e.clientY }; return; }
+    if (pts.size >= 2) { if (drag) { drag = null; refresh(); } const [a, b] = [...pts.values()]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2, x: vo.x, y: vo.y, z: vo.z }; return; }
+    if (drag) return; const touch = e.pointerType !== 'mouse', { p } = planePoint(e); let g = snap(p, touch ? 0.1 : 0.05);
     if (snapKind !== 'v' && !topFace(p)) { g = snap(p, 0.24); if (snapKind !== 'v') { toast('종이 위나 모서리 가까이를 잡아 주세요', 1400); return; } } // near miss: take the closest corner
     drag = { g, t: g, id: e.pointerId, valid: false, touch }; dragMarks(e); }
   else if (mode === 'shape') drag = { x: e.clientX, y: e.clientY, moved: 0, id: e.pointerId, e };
   else if (mode === 'aim') aimDown(e); else if (mode === 'fly') stickDown(e);
 });
 canvas.addEventListener('pointermove', e => {
+  if (mode === 'fold' && pts.has(e.pointerId)) { const wpp = 2 * camA.position.z * Math.tan(camA.fov * Math.PI / 360) / canvas.clientHeight, lim = v => clamp(v, -1.3, 1.3);
+    if (panM) { vo.x = lim(vo.x - (e.clientX - panM.x) * wpp); vo.y = lim(vo.y + (e.clientY - panM.y) * wpp); panM = { x: e.clientX, y: e.clientY }; setCam(); return; }
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pinch && pts.size >= 2) { const [a, b] = [...pts.values()], cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2; vo.z = clamp(pinch.z * pinch.d / (Math.hypot(a.x - b.x, a.y - b.y) || 1), 0.4, 2.2); vo.x = lim(pinch.x - (cx - pinch.cx) * wpp); vo.y = lim(pinch.y + (cy - pinch.cy) * wpp); setCam(); return; } }
   if (mode === 'fold' && drag && drag.id === e.pointerId) {
     const t = snap(planePoint(e).p, drag.touch ? 0.07 : 0.045); drag.t = t; dragMarks(e);
     const r = build(ops.concat([{ g: drag.g, t, mode: foldMode, angle: 180 }]), 152); drag.valid = r.ok && Math.hypot(t[0] - drag.g[0], t[1] - drag.g[1]) > 0.04;
@@ -375,29 +423,42 @@ canvas.addEventListener('pointermove', e => {
   else if (mode === 'aim') aimMove(e); else if (mode === 'fly') stickMove(e);
 });
 function pointerUp(e) {
+  pts.delete(e.pointerId); panM = null; if (pts.size < 2) pinch = null;
   if (mode === 'fold' && drag) { if (drag.id !== e.pointerId) return; if (drag.valid) { ops.push({ g: drag.g, t: drag.t, mode: foldMode, angle: 180 }); snd(520, 0.06, 'triangle', 0.05, 300); } else if (Math.hypot(drag.t[0] - drag.g[0], drag.t[1] - drag.g[1]) > 0.06) toast('이 방향으로는 접을 수 없어요. 종이 안쪽으로 끌어 보세요', 1800); drag = null; refresh(); }
   else if (mode === 'shape' && drag) { if (drag.moved < 8) { const { ray } = planePoint(e), hit = ray.intersectObject(meshF)[0] || ray.intersectObject(meshB)[0];
       if (hit) { const f = cur.faces[triMap[hit.faceIndex]], q = paperG.worldToLocal(hit.point.clone()).applyMatrix4(f.Q.clone().invert()); grip = ap(inv(f.m), [q.x, q.y]); showStats(); toast('여기를 잡고 던집니다'); } } drag = null; }
   else if (mode === 'aim') aimUp(e); else if (mode === 'fly') stickUp(e);
 }
 canvas.addEventListener('pointerup', pointerUp); canvas.addEventListener('pointercancel', pointerUp);
-canvas.addEventListener('wheel', e => { if (mode === 'shape') { e.preventDefault(); orbit.d = clamp(orbit.d * (1 + Math.sign(e.deltaY) * 0.08), 1.2, 6); setCam(); } }, { passive: false });
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+canvas.addEventListener('wheel', e => { if (mode === 'fold') { e.preventDefault(); vo.z = clamp(vo.z * (1 + Math.sign(e.deltaY) * 0.08), 0.4, 2.2); setCam(); } else if (mode === 'shape') { e.preventDefault(); orbit.d = clamp(orbit.d * (1 + Math.sign(e.deltaY) * 0.08), 1.2, 6); setCam(); } }, { passive: false });
 $('bUndo').onclick = () => { ops.pop(); refresh(); };
 $('bUnfold').onclick = () => { let o = ops.pop(); while (o && o.flip && ops.length) { ops.push(o); o = null; } if (o && o.segs) { creases.push(...o.segs); toast('펼쳤어요. 접은 자국이 남았습니다'); } else if (o) ops.pop(); refresh(); };
 $('bFlip').onclick = () => { if (ops.length && ops[ops.length - 1].flip) ops.pop(); else ops.push({ flip: true }); refresh(); };
 $('bMode').onclick = e => { foldMode = foldMode === 'flap' ? 'all' : 'flap'; e.target.textContent = foldMode === 'flap' ? '겹: 잡은 겹만' : '겹: 모든 겹 함께'; e.target.classList.toggle('on', foldMode === 'all'); };
 $('bSnap').onclick = e => { snapOn = !snapOn; e.target.textContent = snapOn ? '스냅 켬' : '스냅 끔'; e.target.classList.toggle('on', snapOn); };
-$('bReset').onclick = () => { ops = []; creases = []; grip = null; fwdRot = 0; upFlip = false; refresh(); };
+function styleUI() {
+  const mk = (host, key) => { host.innerHTML = ''; COLORS.forEach(c => { const b = document.createElement('button'); b.type = 'button'; b.style.background = c; b.setAttribute('aria-label', (key === 'front' ? '앞면 ' : '뒷면 ') + c); b.className = paper[key] === c ? 'on' : ''; b.onclick = () => { paper[key] = c; applyPaper(); styleUI(); }; host.appendChild(b); }); };
+  mk($('swF'), 'front'); mk($('swB'), 'back'); const hp = $('swP'); hp.innerHTML = '';
+  PATS.forEach(([k, n]) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = n; b.className = 'txt' + (paper.pat === k ? ' on' : ''); b.onclick = () => { paper.pat = k; applyPaper(); styleUI(); }; hp.appendChild(b); });
+}
+function randomPaper() { const pk = a => a[Math.floor(Math.random() * a.length)]; paper.back = pk(COLORS.slice(2)); paper.front = Math.random() < 0.6 ? pk(['#ffffff', '#fdf3c8']) : pk(COLORS.filter(c => c !== paper.back)); paper.pat = pk(PATS)[0]; applyPaper(); styleUI(); snd(700, 0.08, 'triangle', 0.05, 1100); }
+$('bStyle').onclick = () => { const p = $('stylePop'); p.hidden = !p.hidden; if (!p.hidden) styleUI(); }; $('bStyleClose').onclick = () => { $('stylePop').hidden = true; };
+$('bRandom').onclick = $('bRandom2').onclick = randomPaper; $('bSwap').onclick = () => { const t = paper.front; paper.front = paper.back; paper.back = t; applyPaper(); styleUI(); };
+$('bMin').onclick = e => { const m = $('foldUI').classList.toggle('min'); e.target.textContent = m ? '안내판 펼치기 ▴' : '안내판 접기 ▾'; e.target.setAttribute('aria-expanded', !m); setCam(); };
+$('bFit').onclick = () => { vo.x = vo.y = 0; vo.z = 1; setCam(); };
+$('bReset').onclick = () => { ops = []; creases = []; grip = null; fwdRot = 0; upFlip = false; setBend(30); refresh(); };
 const F = (g, t, mode, angle) => ({ g, t, mode: mode || 'all', angle: angle || 180 });
 const PRESET = {
   dart: () => [F([-0.5, 0.5], [0, 0]), F([0.5, 0.5], [0, 0]), F([-0.5, 0], [0, -0.20711]), F([0.5, 0], [0, -0.20711]), F([-0.3, -0.3], [0.3, -0.3]), F([0.4, -0.3], [-0.2, -0.3], 'flap', 90), { flip: true }, F([-0.4, -0.3], [0.2, -0.3], 'flap', 90)],
   glider: () => [F([-0.5, 0.5], [0, 0]), F([0.5, 0.5], [0, 0]), F([0, 0.5], [0, 0]), F([-0.3, -0.3], [0.3, -0.3]), F([0.4, -0.3], [-0.26, -0.3], 'flap', 90), { flip: true }, F([-0.4, -0.3], [0.26, -0.3], 'flap', 90)]
 };
-$('bDart').onclick = () => { ops = PRESET.dart(); creases = []; grip = null; refresh(); toast('다트를 접었어요. 되돌리기로 한 단계씩 볼 수 있어요', 2600); };
-$('bGlider').onclick = () => { ops = PRESET.glider(); creases = []; grip = null; refresh(); toast('글라이더를 접었어요', 2000); };
+$('bDart').onclick = () => { ops = PRESET.dart(); creases = []; grip = null; setBend(70); refresh(); toast('다트를 접었어요. 되돌리기로 한 단계씩 볼 수 있어요', 2600); };
+$('bGlider').onclick = () => { ops = PRESET.glider(); creases = []; grip = null; setBend(25); refresh(); toast('글라이더를 접었어요', 2000); };
 function setMode(m) {
   mode = m; $('foldUI').hidden = m !== 'fold'; $('shapeUI').hidden = m !== 'shape'; $('hud').hidden = m !== 'fly' && m !== 'aim'; $('aim').hidden = m !== 'aim'; $('steer').hidden = m !== 'fly'; $('alt').hidden = m !== 'fly'; $('bDash').hidden = m !== 'fly'; $('wind').hidden = m !== 'fly' && m !== 'aim'; if (m !== 'fly') $('stick').hidden = true; $('result').hidden = m !== 'result'; $('banner').hidden = true;
   document.querySelectorAll('#steps span').forEach(s => s.classList.toggle('on', s.dataset.s === (m === 'aim' || m === 'result' ? 'fly' : m)));
+  if (m !== 'fold') $('stylePop').hidden = true;
   if (m === 'fold' || m === 'shape') { refresh(); setCam(); }
 }
 function angleUI() {
@@ -409,6 +470,7 @@ $('bToShape').onclick = () => { setMode('shape'); angleUI(); setCam(); if (ops.f
 $('bBack').onclick = $('bRefold').onclick = $('bNew').onclick = () => setMode('fold');
 $('bWings').onclick = () => { const fs = ops.filter(o => !o.flip); fs.slice(-2).forEach(o => { o.angle = 90; }); angleUI(); refresh(); };
 $('bFwd').onclick = () => { fwdRot = (fwdRot + 1) % 8; refresh(); }; $('bUp').onclick = () => { upFlip = !upFlip; refresh(); };
+const setBend = v => ['L', 'R'].forEach(k => { const e = $('bend' + k); e.value = v; bend[k.toLowerCase()] = v / 100; $('bend' + k + 'V').textContent = v > 0 ? '위 ' + v : v < 0 ? '아래 ' + -v : '평평'; }); // presets come with a sensible trim
 ['L', 'R'].forEach(k => { $('bend' + k).oninput = e => { const v = +e.target.value; bend[k.toLowerCase()] = v / 100; $('bend' + k + 'V').textContent = v > 0 ? '위 ' + v : v < 0 ? '아래 ' + -v : '평평'; refresh(); }; });
 $('ang').oninput = e => { $('angV').textContent = e.target.value + '°'; };
 
@@ -517,7 +579,7 @@ const H0 = 12; { const g = new T.Group(), r = seeded(5); part(g, 'box', 0xeadfc8
 
 /* ---- plane, hand ---- */
 const VS = 2.2, planeG = new T.Group(), planeIn = new T.Group(); planeG.add(planeIn); sceneB.add(planeG);
-const pF = new T.Mesh(new T.BufferGeometry(), new T.MeshLambertMaterial({ color: 0xffffff, side: T.FrontSide })), pB = new T.Mesh(new T.BufferGeometry(), new T.MeshLambertMaterial({ color: 0x5b8def, side: T.BackSide })), pE = new T.LineSegments(new T.BufferGeometry(), new T.LineBasicMaterial({ color: 0x17264d }));
+const pF = new T.Mesh(new T.BufferGeometry(), new T.MeshLambertMaterial({ color: 0xffffff, map: texF, side: T.FrontSide })), pB = new T.Mesh(new T.BufferGeometry(), new T.MeshLambertMaterial({ color: 0xffffff, map: texB, side: T.BackSide })), pE = new T.LineSegments(new T.BufferGeometry(), new T.LineBasicMaterial({ color: 0x17264d }));
 planeIn.add(pF, pB, pE);
 const hand = new T.Group(); { const SK = 0xf1c4a0, SK2 = 0xe3ae8a, h = new T.Group(), f = (pts, r, c) => { for (let i = 0; i < pts.length - 1; i++) seg(h, pts[i], pts[i + 1], r * (1 - i * 0.08), c || SK); };
   part(h, 'box', SK, -0.047, -0.086, 0.04, 0.09, 0.034, 0.08).rotation.z = 0.12; part(h, 'sph', SK2, -0.052, -0.074, 0.0, 0.026, 0.022, 0.024);
@@ -545,21 +607,24 @@ function newWind() { W0.sp = Math.random() < 0.2 ? 0 : rnd(0.4, 3.6); W0.dir = r
 const Fl = {}; let flyT = 0, events = [], nextEvt = 0, keyL = false, keyR = false, keyU = false, keyD = false, wind = V3(0, 0, 0), gustT = 0, best = 0;
 function resetFlight() {
   buildPlane(); newWind(); ctl.cd = ctl.dash = ctl.spin = ctl.u = ctl.v = 0; Object.assign(Fl, { inv: 0, bias: 0, sk: 1, smoke: 0, wet: 0, abduct: 0, poops: 0, inRain: false, status: new Map(), x: 0.6, y: H0 + 1.45, z: 0, V: 0, gam: 0, psi: 0, th: 0, q: 0, phi: 0, pr: 0, t: 0, maxY: 0, flying: false, mass: aero.mass, sm: aero.sm, Cd0: aero.Cd0, pull: 0 });
-  events.forEach(e => sceneB.remove(e.g)); events = []; sparks.forEach(sp => sceneB.remove(sp.m)); sparks.length = 0; pB.material.color.set(0x5b8def); $('splat').innerHTML = ''; nextEvt = 16; wind.set(0, 0, 0); gustT = 0; updateChunks(0); hand.visible = true; $('dist').textContent = '0.0 m'; $('sub').textContent = '';
+  events.forEach(e => sceneB.remove(e.g)); events = []; sparks.forEach(sp => sceneB.remove(sp.m)); sparks.length = 0; pB.material.color.set(0xffffff); $('splat').innerHTML = ''; nextEvt = 16; wind.set(0, 0, 0); gustT = 0; updateChunks(0); hand.visible = true; $('dist').textContent = '0.0 m'; $('sub').textContent = '';
 }
 function physics(dt) {
   const A = aero, m = Fl.mass * (1 + Fl.wet), g = 9.81, V = Math.max(Fl.V, 0.6), qd = 0.6 * V * V; let al = Fl.th - Fl.gam; al = Math.atan2(Math.sin(al), Math.cos(al));
-  const s = clamp((Math.abs(al) - 0.24) / 0.16, 0, 1), sm = s * s * (3 - 2 * s), CL = A.a * al * (1 - sm) + 1.05 * Math.sin(2 * al) * sm, CD = Fl.Cd0 + CL * CL / (Math.PI * A.AR * 0.75) * (1 - sm) + 1.25 * Math.sin(al) * Math.sin(al) * sm + (Fl.sm < 0 ? Math.min(0.15, -Fl.sm) * 2.5 : 0);
+  // attached flow below the stall angle, separated flat-plate flow above it: lift collapses and drag soars
+  const s = clamp((Math.abs(al) - A.aStall) / 0.14, 0, 1), st = s * s * (3 - 2 * s), sa = Math.sin(al);
+  const CL = A.a * al * (1 - st) + 0.75 * Math.sin(2 * al) * st, CD = Fl.Cd0 + CL * CL / (Math.PI * A.AR * 0.75) * (1 - st) + (1.6 * sa * sa + 0.06) * st;
   const Lf = qd * A.S * CL * Fl.sk, D = qd * A.S * CD;
   Fl.V += (-D / m - g * Math.sin(Fl.gam)) * dt; if (Fl.V < 0.6) Fl.V = 0.6;
   Fl.gam += (Lf * Math.cos(Fl.phi) / m - g * Math.cos(Fl.gam)) / V * dt; Fl.gam = clamp(Fl.gam, -1.5, 1.5);
   Fl.psi += Lf * Math.sin(Fl.phi) / (m * Math.max(V, 3) * Math.max(0.3, Math.cos(Fl.gam))) * dt * 0.6 + (Math.random() - 0.5) * clamp(0.5 - A.yaw * 3, 0.02, 0.5) * dt * 1.5;
-  // pitch: CG margin sets the trim; past the stall a flat plate noses down again, so even a tail-heavy shape flutters down instead of tumbling
-  const smE = clamp(Fl.sm, -0.03, 0.24), Cm = A.Cm0 - A.a * smE * clamp(al, -0.7, 0.7) - 5.5 * Fl.q * A.c / (2 * V) - 0.5 * Math.sin(al) * sm;
-  Fl.q = clamp(Fl.q + qd * A.S * A.c * Cm / A.Iyy * dt, -14, 14); Fl.th += Fl.q * dt;
+  // pitch: lift acts at the neutral point while the flow is attached and near mid-chord once stalled.
+  // CG ahead of the lift is stable; CG behind it pitches the nose up into a stall, and far behind it tumbles.
+  const Cm = A.Cm0 * (1 - 0.6 * st) - A.a * Fl.sm * al * (1 - st) - 1.25 * sa * (Fl.sm + A.kPost) * st, K = qd * A.S * A.c / A.Iyy;
+  Fl.q = clamp((Fl.q + K * Cm * dt) / (1 + K * 5.5 * A.c / (2 * V) * dt), -14, 14); Fl.th += Fl.q * dt; // pitch damping is very stiff for a few grams of paper, so it is integrated implicitly
   // roll: lopsided wings, an off-centre CG or uneven bends set a small steady bank (a gentle turn); knocks are transient and the plane rights itself
-  const stabK = 1 + 6 * Math.max(0, A.gam) + 10 * Math.max(0, A.zw / A.b), raw = (2.2 * A.asym + 5 * A.cgy + 6 * A.roll + 8 * Fl.bias) / stabK, phiT = clamp(Math.sign(raw) * Math.max(0, Math.abs(raw) - 0.035), -0.28, 0.28), w = 4.5; // small hand-folding errors are forgiven
-  Fl.pr += (-Math.sin(Fl.phi - phiT) * w * w - 1.7 * w * Fl.pr) * dt + (Math.random() - 0.5) * 0.6 * dt; Fl.pr = clamp(Fl.pr, -16, 16); Fl.phi += Fl.pr * dt;
+  const stabK = 1 + 6 * Math.max(0, A.gam) + 10 * Math.max(0, A.zw / A.b), raw = (2.2 * A.asym + 5 * A.cgy + 6 * A.roll + 8 * Fl.bias) / stabK, phiT = clamp(Math.sign(raw) * Math.max(0, Math.abs(raw) - 0.035), -0.28, 0.28), w = 4.5;
+  Fl.pr += (-Math.sin(Fl.phi - phiT) * w * w - 1.7 * w * Fl.pr) * dt + (Math.random() - 0.5) * (0.6 + 6 * st) * dt; Fl.pr = clamp(Fl.pr, -16, 16); Fl.phi += Fl.pr * dt;
   let wy = 0; for (const t of thermals) if (Math.hypot(Fl.x - t.x, Fl.z - t.z) < t.r) wy = 2.2;
   const cg = Math.cos(Fl.gam); Fl.x += (V * cg * Math.cos(Fl.psi) + wind.x + W0.x) * dt; Fl.z += (V * cg * Math.sin(Fl.psi) + wind.z + W0.z) * dt; Fl.y += (V * Math.sin(Fl.gam) + wy + wind.y) * dt;
 }
@@ -717,7 +782,7 @@ function frame(t) {
 }
 function resize() { const w = canvas.clientWidth, h = canvas.clientHeight; renderer.setSize(w, h, false); camB.aspect = w / h; camB.fov = w < h ? 78 : 62; camB.updateProjectionMatrix(); setCam(); }
 addEventListener('resize', resize);
-window.__pp = { force: null, ctl, dodge, get calls() { return renderer.info.render.calls; }, get trail() { return trail; }, get events() { return events; }, get ops() { return ops; }, set ops(v) { ops = v; refresh(); }, get aero() { return aero; }, Fl, launch, build, analyze, setMode, PRESET, get cur() { return cur; }, get mode() { return mode; }, physics };
-setMode('fold'); resize(); requestAnimationFrame(frame);
+window.__pp = { force: null, W0, paper, applyPaper, vo, ctl, dodge, get calls() { return renderer.info.render.calls; }, get trail() { return trail; }, get events() { return events; }, get ops() { return ops; }, set ops(v) { ops = v; refresh(); }, get aero() { return aero; }, Fl, launch, build, analyze, setMode, PRESET, get cur() { return cur; }, get mode() { return mode; }, physics };
+applyPaper(); setMode('fold'); resize(); requestAnimationFrame(frame);
 })();
 </script>
