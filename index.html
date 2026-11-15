@@ -614,23 +614,24 @@ function resetFlight() {
   events.forEach(e => sceneB.remove(e.g)); events = []; sparks.forEach(sp => sceneB.remove(sp.m)); sparks.length = 0; pB.material.color.set(0xffffff); $('splat').innerHTML = ''; nextEvt = rnd(32, 48); wind.set(0, 0, 0); gustT = 0; updateChunks(0); hand.visible = true; $('dist').textContent = '0.0 m'; $('sub').textContent = '';
 }
 function physics(dt) {
-  const A = aero, m = Fl.mass * (1 + Fl.wet), g = 9.81, V = Math.max(Fl.V, 0.6), qd = 0.6 * V * V; let al = Fl.th - Fl.gam; al = Math.atan2(Math.sin(al), Math.cos(al));
+  const A = aero, m = Fl.mass * (1 + Fl.wet), g = 9.81, V = Math.max(Fl.V, 0), Vs = Math.max(V, 0.3), qd = 0.6 * V * V; let al = Fl.th - Fl.gam; al = Math.atan2(Math.sin(al), Math.cos(al));
   // attached flow below the stall angle, separated flat-plate flow above it: lift collapses and drag soars
   const s = clamp((Math.abs(al) - A.aStall) / 0.14, 0, 1), st = s * s * (3 - 2 * s), sa = Math.sin(al);
   const CL = A.a * al * (1 - st) + 0.75 * Math.sin(2 * al) * st, CD = Fl.Cd0 + CL * CL / (Math.PI * A.AR * 0.75) * (1 - st) + (1.6 * sa * sa + 0.06) * st;
   const Lf = qd * A.S * CL * Fl.sk, D = qd * A.S * CD;
-  Fl.V += (-D / m - g * Math.sin(Fl.gam)) * dt; if (Fl.V < 0.6) Fl.V = 0.6;
-  Fl.gam += (Lf * Math.cos(Fl.phi) / m - g * Math.cos(Fl.gam)) / V * dt; Fl.gam = clamp(Fl.gam, -1.5, 1.5);
-  Fl.psi += Lf * Math.sin(Fl.phi) / (m * Math.max(V, 3) * Math.max(0.3, Math.cos(Fl.gam))) * dt * 0.6 + (Math.random() - 0.5) * clamp(0.5 - A.yaw * 3, 0.02, 0.5) * dt * 1.5;
+  // velocity is integrated as forward/vertical components, so the plane can slow to a stop, slide back or loop without gaining energy
+  const cg0 = Math.cos(Fl.gam), sg0 = Math.sin(Fl.gam), aL = Lf * Math.cos(Fl.phi) / m, aD = D / m, vh = V * cg0 + (-aD * cg0 - aL * sg0) * dt, vy = V * sg0 + (-aD * sg0 + aL * cg0 - g) * dt;
+  Fl.V = Math.hypot(vh, vy); Fl.gam = Math.atan2(vy, vh);
+  Fl.psi += Lf * Math.sin(Fl.phi) / (m * Math.max(V, 3) * Math.max(0.3, Math.abs(Math.cos(Fl.gam)))) * dt * 0.6 + (Math.random() - 0.5) * clamp(0.5 - A.yaw * 3, 0.02, 0.5) * dt * 1.5;
   // pitch: lift acts at the neutral point while the flow is attached and near mid-chord once stalled.
   // CG ahead of the lift is stable; CG behind it pitches the nose up into a stall, and far behind it tumbles.
   const Cm = A.Cm0 * (1 - 0.6 * st) - A.a * Fl.sm * al * (1 - st) - 1.25 * sa * (Fl.sm + A.kPost) * st, K = qd * A.S * A.c / A.Iyy;
-  Fl.q = clamp((Fl.q + K * Cm * dt) / (1 + K * 5.5 * A.c / (2 * V) * dt), -14, 14); Fl.th += Fl.q * dt; // pitch damping is very stiff for a few grams of paper, so it is integrated implicitly
+  Fl.q = clamp((Fl.q + K * Cm * dt) / (1 + K * 5.5 * A.c / (2 * Vs) * dt), -14, 14); Fl.th += Fl.q * dt; // pitch damping is very stiff for a few grams of paper, so it is integrated implicitly
   // roll: lopsided wings, an off-centre CG or uneven bends set a small steady bank (a gentle turn); knocks are transient and the plane rights itself
   const stabK = 1 + 6 * Math.max(0, A.gam) + 10 * Math.max(0, A.zw / A.b), raw = (2.2 * A.asym + 5 * A.cgy + 6 * A.roll + 8 * Fl.bias) / stabK, phiT = clamp(Math.sign(raw) * Math.max(0, Math.abs(raw) - 0.035), -0.28, 0.28), w = 4.5;
   Fl.pr += (-Math.sin(Fl.phi - phiT) * w * w - 1.7 * w * Fl.pr) * dt + (Math.random() - 0.5) * (0.6 + 6 * st) * dt; Fl.pr = clamp(Fl.pr, -16, 16); Fl.phi += Fl.pr * dt;
   let wy = 0; for (const t of thermals) if (Math.hypot(Fl.x - t.x, Fl.z - t.z) < t.r) wy = 2.2;
-  const cg = Math.cos(Fl.gam); Fl.x += (V * cg * Math.cos(Fl.psi) + wind.x + W0.x) * dt; Fl.z += (V * cg * Math.sin(Fl.psi) + wind.z + W0.z) * dt; Fl.y += (V * Math.sin(Fl.gam) + wy + wind.y) * dt;
+  Fl.x += (vh * Math.cos(Fl.psi) + wind.x + W0.x) * dt; Fl.z += (vh * Math.sin(Fl.psi) + wind.z + W0.z) * dt; Fl.y += (vy + wy + wind.y) * dt;
 }
 function placePlane() { planeG.position.set(Fl.x, Fl.y, Fl.z); planeG.rotation.set(Fl.phi + (Fl.flying ? ctl.u * 0.35 + ctl.spin : 0), -Fl.psi, Fl.th + (Fl.flying ? Math.min(0, ctl.v) * 0.22 : 0), 'YZX'); }
 function endFlight(why) {
@@ -675,7 +676,7 @@ function control(dt) {
   ctl.cd = Math.max(0, ctl.cd - dt); Fl.inv = Math.max(0, (Fl.inv || 0) - dt); if (!Fl.flying || Fl.abduct > 0) return;
   let lat = ctl.u * 4.2, up = Math.min(0, ctl.v) * 2.8; // the stick can slide and dive, never climb if (ctl.dash > 0) { ctl.dash -= dt; lat += ctl.du * 9.5; up += ctl.dv * 6.5; ctl.spin += dt / 0.34 * 6.283 * (ctl.du >= 0 ? 1 : -1); } else ctl.spin = 0;
   Fl.x -= Math.sin(Fl.psi) * lat * dt; Fl.z += Math.cos(Fl.psi) * lat * dt; if (!(up < 0 && Fl.y < 0.6)) Fl.y += up * dt;
-  Fl.V = Math.max(1.5, Fl.V - (0.45 * Math.abs(ctl.u) + Math.min(0, ctl.v)) * dt); // sliding and climbing cost a little speed; diving gives some back
+  Fl.V = Math.max(0, Fl.V - (0.45 * Math.abs(ctl.u) + Math.min(0, ctl.v)) * dt); // sliding and climbing cost a little speed; diving gives some back
   const b = $('bDash'), cdOn = ctl.cd > 0; if (cdOn !== control.was) { control.was = cdOn; b.classList.toggle('cd', cdOn); } $('dashFill').style.height = ctl.cd / 1.8 * 100 + '%';
 }
 $('bDash').addEventListener('pointerdown', e => { e.preventDefault(); dodge(); });
@@ -786,7 +787,7 @@ function frame(t) {
 }
 function resize() { const w = canvas.clientWidth, h = canvas.clientHeight; renderer.setSize(w, h, false); camB.aspect = w / h; camB.fov = w < h ? 78 : 62; camB.updateProjectionMatrix(); setCam(); }
 addEventListener('resize', resize);
-window.__pp = { force: null, W0, paper, applyPaper, vo, ctl, dodge, get calls() { return renderer.info.render.calls; }, get trail() { return trail; }, get events() { return events; }, get ops() { return ops; }, set ops(v) { ops = v; refresh(); }, get aero() { return aero; }, Fl, launch, build, analyze, setMode, PRESET, get cur() { return cur; }, get mode() { return mode; }, physics };
+window.__pp = { force: null, control, W0, paper, applyPaper, vo, ctl, dodge, get calls() { return renderer.info.render.calls; }, get trail() { return trail; }, get events() { return events; }, get ops() { return ops; }, set ops(v) { ops = v; refresh(); }, get aero() { return aero; }, Fl, launch, build, analyze, setMode, PRESET, get cur() { return cur; }, get mode() { return mode; }, physics };
 applyPaper(); setMode('fold'); resize(); requestAnimationFrame(frame);
 })();
 </script>
