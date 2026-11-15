@@ -61,7 +61,7 @@ button.pri { background: var(--blue); color: #fff; } button.on { background: var
 #bDash.cd { background: var(--paper); }
 #stick { position: absolute; width: 120px; height: 120px; margin: -60px 0 0 -60px; border: 2px solid rgba(255,255,255,.8); border-radius: 50%; background: rgba(23,38,77,.18); pointer-events: none; }
 #stick i { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px; border-radius: 50%; background: var(--mark); border: 2px solid var(--ink); }
-#wind { position: absolute; top: 44px; right: max(12px, env(safe-area-inset-right, 0px)); display: flex; gap: 8px; align-items: center; background: var(--paper); border: 1.5px solid var(--ink); padding: 4px 10px 4px 6px; font-size: 13px; pointer-events: none; }
+#wind { display: inline-flex; margin-top: 6px; text-align: left; gap: 8px; align-items: center; background: var(--paper); border: 1.5px solid var(--ink); padding: 4px 10px 4px 6px; font-size: 13px; pointer-events: none; }
 #wind .k { display: block; font-size: 11px; color: var(--dim); } #wind b { font-variant-numeric: tabular-nums; }
 #vig { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(12, 24, 56, 0.34) 100%); }
 #pop { position: absolute; left: 50%; top: 22%; transform: translate(-50%, 0); font: 700 38px var(--hand); color: #fff; text-shadow: 0 3px 0 var(--ink), 0 0 18px rgba(255, 216, 74, .9); pointer-events: none; white-space: nowrap; opacity: 0; }
@@ -74,8 +74,8 @@ button.pri { background: var(--blue); color: #fff; } button.on { background: var
 @media (prefers-reduced-motion: reduce) { #banner, #splat i { animation-duration: .01s; } }
 #aim { position: absolute; left: 0; right: 0; bottom: 0; padding-block: 12px; text-align: center; pointer-events: none; }
 #aim .hint { font: 700 22px var(--hand); color: #fff; text-shadow: 0 2px 0 var(--ink); margin: 0 0 8px; }
-#aim .row { display: inline-flex; gap: 10px; align-items: center; background: var(--paper); border: 1.5px solid var(--ink); padding: 6px 10px; pointer-events: auto; font-size: 13px; }
-#aim input { width: 130px; }
+#aim .row { display: inline-flex; flex-wrap: wrap; justify-content: center; gap: 6px 10px; align-items: center; max-width: 100%; box-sizing: border-box; background: var(--paper); border: 1.5px solid var(--ink); padding: 6px 10px; pointer-events: auto; font-size: 13px; }
+#aim .row > * { flex: none; white-space: nowrap; } #aim .grp { display: inline-flex; gap: 8px; align-items: center; } #aim input { width: 120px; } #aim .row button { padding: 6px 10px; }
 #steer { position: absolute; left: 0; right: 0; bottom: 14px; text-align: center; font: 700 18px var(--hand); color: #fff; text-shadow: 0 2px 0 var(--ink); pointer-events: none; }
 #loupe { position: absolute; top: 44px; left: 12px; width: 136px; height: 136px; border: 2.5px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); pointer-events: none; }
 #loupe.r { left: auto; right: 12px; }
@@ -158,14 +158,13 @@ button.pri { background: var(--blue); color: #fff; } button.on { background: var
     </div>
   </div>
 
-  <div id="hud" hidden><div id="dist">0.0 m</div><div id="sub"></div><div id="chips"></div></div>
+  <div id="hud" hidden><div id="dist">0.0 m</div><div id="sub"></div><div id="wind" hidden><svg id="windArrow" viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path d="M12 2 L19 12 H14.5 V22 H9.5 V12 H5 Z" fill="#2456d6" stroke="#17264d" stroke-width="1.5" stroke-linejoin="round"/></svg><div><span class="k">바람 · 위쪽이 앞</span><span id="windTxt"></span></div></div><div id="chips"></div></div>
   <div id="alt" hidden><i id="altFill"></i><span>높이</span></div>
   <div id="vig" hidden></div><div id="flash"></div><div id="splat"></div><div id="pop" hidden></div>
   <div id="banner" hidden></div>
-  <div id="wind" hidden><svg id="windArrow" viewBox="0 0 24 24" width="34" height="34" aria-hidden="true"><path d="M12 2 L19 12 H14.5 V22 H9.5 V12 H5 Z" fill="#2456d6" stroke="#17264d" stroke-width="1.5" stroke-linejoin="round"/></svg><div><span class="k">바람 (위쪽이 앞) · 계속 바뀝니다</span><span id="windTxt"></span></div></div>
   <div id="aim" class="gut" hidden>
     <p class="hint">아래로 당겼다가 위로 빠르게 밀어 던지세요</p>
-    <div class="row"><label for="ang">던지는 각도</label><input id="ang" type="range" min="-5" max="40" value="10"><b id="angV">10°</b><span>당김</span><div id="pow"><i id="powFill"></i></div><button class="bSound" type="button">소리 켬</button><button id="bRefold" type="button">다시 접기</button></div>
+    <div class="row"><span class="grp"><label for="ang">던지는 각도</label><input id="ang" type="range" min="-5" max="40" value="10"><b id="angV">10°</b></span><span class="grp"><span>당김</span><div id="pow"><i id="powFill"></i></div></span><span class="grp"><button class="bSound" type="button">소리 켬</button><button id="bRefold" type="button">다시 접기</button></span></div>
   </div>
   <div id="steer" hidden>화면을 누른 채 끌면 좌우로, 아래로 끌면 내려가요</div>
   <button id="bDash" type="button" hidden><b>회피</b><i id="dashFill"></i></button>
