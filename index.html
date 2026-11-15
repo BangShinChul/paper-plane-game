@@ -128,6 +128,7 @@ button.pri { background: var(--blue); color: #fff; } button.on { background: var
         <div id="stats"></div>
         <div class="btns" style="margin-top:8px">
           <button id="bWings" type="button">날개 자동 펴기</button>
+          <button id="bTrim" type="button">뒤끝 자동 맞춤</button>
           <button id="bFwd" type="button">앞 방향 돌리기</button>
           <button id="bUp" type="button">위아래 바꾸기</button>
           <button id="bBack" type="button">다시 접기</button>
@@ -347,7 +348,7 @@ function setCam() {
 }
 
 /* ================= aerodynamics from the folded shape ================= */
-const PS = 0.21, MASS = 0.0045; // sheet side (m), sheet mass (kg)
+const PS = 0.21, MASS = 0.0035; // sheet side (m), sheet mass (kg): 80 g/m² paper
 function raster(polys) {
   let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; for (const P of polys) for (const p of P) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]); }
   const N = 64, dx = (x1 - x0) / N || 1e-6, dy = (y1 - y0) / N || 1e-6, g = new Uint8Array(N * N);
@@ -376,11 +377,11 @@ function analyze(faces) {
   for (const f of bf) { const m = MASS * f.A / (PS * PS); Iyy += m * (f.c.x * f.c.x + f.c.z * f.c.z + 0.00004); Ixx += m * (f.c.y * f.c.y + f.c.z * f.c.z + 0.00004); block += f.A * Math.abs(f.n.x); { const zz = Math.abs(f.n.z), inc = Math.atan2(f.n.z > 0 ? f.n.x : -f.n.x, zz); if (zz > 0.5 && Math.abs(inc) > 0.03 && Math.abs(inc) < 0.7) { cmI += f.c.x * -inc * f.A * zz; clI += f.c.y * -inc * f.A * zz; } } // a tilted flap works as a control surface, not as wing
     const nz = Math.abs(f.n.z); if (nz > 0.3 && Math.abs(f.c.y) > 0.004) { const w = f.A * nz, ny = f.n.z > 0 ? f.n.y : -f.n.y; gam += w * Math.atan(-ny * Math.sign(f.c.y) / nz); gw += w; zwb += w * f.c.z; zws += w; } }
   const a = 2 * Math.PI * AR / (AR + 2) * 0.72, xnpK = 0.12 + 0.13 * clamp((AR - 1) / 3, 0, 1), xnp = top.cx + xnpK * c, sm = -xnp / c; // slender wings carry their lift further aft
-  const A = { S, b, c, len, AR, a, sm, Cd0: 0.035 + 1.1 * block / S + 0.012 * (Math.abs(bend.l) + Math.abs(bend.r)) / 2, Cm0: 0.006 + 0.05 * (bend.l + bend.r) / 2 + clamp(a * cmI / (S * c), -0.06, 0.06), roll: 0.04 * (bend.r - bend.l) + clamp(a * clI / (S * b) * 0.5, -0.05, 0.05), Iyy: Math.max(Iyy, 3e-6), Ixx: Math.max(Ixx, 3e-6), gam: gw ? gam / gw : 0, asym: (top.pos - top.neg) / S, cgy: top.cy / b,
+  const A = { S, b, c, len, AR, a, sm, Cd0: 0.03 + 1.1 * block / S + 0.012 * (Math.abs(bend.l) + Math.abs(bend.r)) / 2, cmInc: clamp(a * cmI / (S * c), -0.06, 0.06), Cm0: 0.006 + 0.05 * (bend.l + bend.r) / 2 + clamp(a * cmI / (S * c), -0.06, 0.06), roll: 0.04 * (bend.r - bend.l) + clamp(a * clI / (S * b) * 0.5, -0.05, 0.05), Iyy: Math.max(Iyy, 3e-6), Ixx: Math.max(Ixx, 3e-6), gam: gw ? gam / gw : 0, asym: (top.pos - top.neg) / S, cgy: top.cy / b,
     yaw: side.area / S * (0.15 - side.cx / len), zw: zws ? zwb / zws : 0, mass: MASS, C, X, Y, up, bf };
   { const xr = top.x0, zl = 0.3 * len; A.warp = p => { const d = p.clone().sub(C), x = d.dot(X) * PS, y = d.dot(Y) * PS; if (x > xr + zl || Math.abs(y) < 0.008) return p; const t = (xr + zl - x) / zl; return p.addScaledVector(up, (y > 0 ? bend.l : bend.r) * 0.1 * len * t * t / PS); }; }
   A.aStall = 0.24 + 0.1 * clamp(1.6 - AR, 0, 1); A.kPost = xnpK; // slender wings hold on a little longer; once stalled the lift sits near mid-chord
-  const est = al => { const s0 = clamp((al - A.aStall) / 0.14, 0, 1), t = s0 * s0 * (3 - 2 * s0), CL = A.a * al * (1 - t) + 0.75 * Math.sin(2 * al) * t, CD = A.Cd0 + CL * CL / (Math.PI * AR * 0.75) * (1 - t) + (1.6 * Math.sin(al) ** 2 + 0.06) * t; return [CL, CD]; };
+  const est = al => { const s0 = clamp((al - A.aStall) / 0.14, 0, 1), t = s0 * s0 * (3 - 2 * s0), CL = A.a * al * (1 - t) + 0.75 * Math.sin(2 * al) * t, CD = A.Cd0 + CL * CL / (Math.PI * AR * 0.9) * (1 - t) + (1.6 * Math.sin(al) ** 2 + 0.06) * t; return [CL, CD]; };
   A.aTrim = A.sm > 0.005 ? clamp(A.Cm0 / (A.a * A.sm), 0.01, A.aStall + 0.06) : A.aStall + 0.16; { const e = est(A.aTrim); A.LD = e[0] / e[1]; A.Vt = Math.sqrt(2 * MASS * 9.81 / (1.2 * S * Math.max(e[0], 0.05))); }
   return A;
 }
@@ -393,7 +394,7 @@ function showStats() {
   const A = aero, g = gripPoint(); gripDot.position.copy(g); cgDot.position.copy(A.C); arrow.position.copy(A.C).addScaledVector(A.up, 0.02); arrow.setDirection(A.X); arrow.setLength(Math.max(0.3, A.len / PS * 0.7), 0.09, 0.06);
   const st = A.sm < -A.kPost ? '<span class="bad">뒤가 너무 무거움 · 뒤집히며 떨어져요</span>' : A.sm < 0 ? '<span class="bad">뒤가 무거움 · 고개를 들다 실속해 뚝 떨어져요</span>' : A.sm < 0.03 ? '<span class="bad">아슬아슬 · 고개를 들다 실속하기 쉬워요</span>' : A.sm < 0.3 ? '<b>좋음</b>' : '<span class="bad">머리가 무거움 · 빨리 떨어져요</span>';
   const bal = Math.abs(A.asym) < 0.04 && Math.abs(A.cgy) < 0.02 ? '<b>좋음</b>' : '<span class="bad">한쪽으로 돌아요</span>';
-  $('stats').innerHTML = '날개 면적 <b>' + (A.S * 1e4).toFixed(0) + ' cm²</b> · 날개 폭 <b>' + (A.b * 100).toFixed(1) + ' cm</b><br>앞뒤 안정성 ' + st + '<br>좌우 균형 ' + bal + (Math.abs(A.roll) > 0.012 ? ' · <span class="bad">' + (A.roll > 0 ? '오른쪽' : '왼쪽') + '으로 기울어요</span>' : '') + '<br>예상 활공비 <b>' + A.LD.toFixed(1) + '</b> · 순항 속도 <b>' + A.Vt.toFixed(1) + ' m/s</b><br><span style="color:var(--dim)">노란 점 무게중심 · 빨간 점 잡는 곳 · 파란 화살표 앞</span>';
+  $('stats').innerHTML = '날개 면적 <b>' + (A.S * 1e4).toFixed(0) + ' cm²</b> · 날개 폭 <b>' + (A.b * 100).toFixed(1) + ' cm</b><br>앞뒤 안정성 ' + st + (A.sm > 0.005 ? (A.Cm0 / (A.a * A.sm) > A.aStall ? '<br><span class="bad">뒤끝을 너무 올렸어요 · 고개를 들다 실속해 멀리 못 가요</span>' : A.Cm0 / (A.a * A.sm) < 0.07 ? '<br><span class="bad">뒤끝을 더 올리면 덜 내리꽂아요</span>' : '<br>뒤끝 휘기 <b>알맞음</b>') : '') + '<br>좌우 균형 ' + bal + (Math.abs(A.roll) > 0.012 ? ' · <span class="bad">' + (A.roll > 0 ? '오른쪽' : '왼쪽') + '으로 기울어요</span>' : '') + '<br>예상 활공비 <b>' + A.LD.toFixed(1) + '</b> · 순항 속도 <b>' + A.Vt.toFixed(1) + ' m/s</b><br><span style="color:var(--dim)">노란 점 무게중심 · 빨간 점 잡는 곳 · 파란 화살표 앞</span>';
 }
 
 /* ================= fold / shape input ================= */
@@ -469,6 +470,7 @@ function angleUI() {
 $('bToShape').onclick = () => { setMode('shape'); angleUI(); setCam(); if (ops.filter(o => !o.flip).every(o => o.angle === 180)) toast('180°는 완전히 접힌 상태예요. 날개가 될 접기를 90°쯤으로 세워 보세요', 3600); };
 $('bBack').onclick = $('bRefold').onclick = $('bNew').onclick = () => setMode('fold');
 $('bWings').onclick = () => { const fs = ops.filter(o => !o.flip); fs.slice(-2).forEach(o => { o.angle = 90; }); angleUI(); refresh(); };
+$('bTrim').onclick = () => { const A = aero; if (A.sm <= 0.005) return toast('뒤가 무거워서 뒤끝으로는 맞출 수 없어요. 앞쪽을 더 접어 무겁게 해 보세요', 3200); const v = clamp(Math.round((A.a * A.sm * A.aStall * 0.62 - 0.006 - A.cmInc) / 0.05 * 20) * 5, -100, 100); setBend(v); refresh(); toast('뒤끝을 ' + (v > 0 ? '위 ' + v : v < 0 ? '아래 ' + -v : '평평') + '(으)로 맞췄어요', 2000); };
 $('bFwd').onclick = () => { fwdRot = (fwdRot + 1) % 8; refresh(); }; $('bUp').onclick = () => { upFlip = !upFlip; refresh(); };
 const setBend = v => ['L', 'R'].forEach(k => { const e = $('bend' + k); e.value = v; bend[k.toLowerCase()] = v / 100; $('bend' + k + 'V').textContent = v > 0 ? '위 ' + v : v < 0 ? '아래 ' + -v : '평평'; }); // presets come with a sensible trim
 ['L', 'R'].forEach(k => { $('bend' + k).oninput = e => { const v = +e.target.value; bend[k.toLowerCase()] = v / 100; $('bend' + k + 'V').textContent = v > 0 ? '위 ' + v : v < 0 ? '아래 ' + -v : '평평'; refresh(); }; });
@@ -617,7 +619,7 @@ function physics(dt) {
   const A = aero, m = Fl.mass * (1 + Fl.wet), g = 9.81, V = Math.max(Fl.V, 0), Vs = Math.max(V, 0.3), qd = 0.6 * V * V; let al = Fl.th - Fl.gam; al = Math.atan2(Math.sin(al), Math.cos(al));
   // attached flow below the stall angle, separated flat-plate flow above it: lift collapses and drag soars
   const s = clamp((Math.abs(al) - A.aStall) / 0.14, 0, 1), st = s * s * (3 - 2 * s), sa = Math.sin(al);
-  const CL = A.a * al * (1 - st) + 0.75 * Math.sin(2 * al) * st, CD = Fl.Cd0 + CL * CL / (Math.PI * A.AR * 0.75) * (1 - st) + (1.6 * sa * sa + 0.06) * st;
+  const CL = A.a * al * (1 - st) + 0.75 * Math.sin(2 * al) * st, CD = Fl.Cd0 + CL * CL / (Math.PI * A.AR * 0.9) * (1 - st) + (1.6 * sa * sa + 0.06) * st;
   const Lf = qd * A.S * CL * Fl.sk, D = qd * A.S * CD;
   // velocity is integrated as forward/vertical components, so the plane can slow to a stop, slide back or loop without gaining energy
   const cg0 = Math.cos(Fl.gam), sg0 = Math.sin(Fl.gam), aL = Lf * Math.cos(Fl.phi) / m, aD = D / m, vh = V * cg0 + (-aD * cg0 - aL * sg0) * dt, vy = V * sg0 + (-aD * sg0 + aL * cg0 - g) * dt;
