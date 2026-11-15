@@ -740,7 +740,7 @@ function dodge() {
 function control(dt) {
   const ku = (keyR ? 1 : 0) - (keyL ? 1 : 0), kv = (keyU ? 1 : 0) - (keyD ? 1 : 0), tu = clamp(ku + ctl.su, -1, 1), tv = clamp(kv + ctl.sv, -1, 1), k = Math.min(1, dt * 9); ctl.u += (tu - ctl.u) * k; ctl.v += (tv - ctl.v) * k;
   ctl.cd = Math.max(0, ctl.cd - dt); Fl.inv = Math.max(0, (Fl.inv || 0) - dt); if (!Fl.flying || Fl.abduct > 0) return;
-  let lat = ctl.u * 4.2, up = Math.min(0, ctl.v) * 2.8; // the stick can slide and dive, never climb if (ctl.dash > 0) { ctl.dash -= dt; lat += ctl.du * 9.5; up += ctl.dv * 6.5; ctl.spin += dt / 0.34 * 6.283 * (ctl.du >= 0 ? 1 : -1); } else ctl.spin = 0;
+  let lat = ctl.u * 4.2, up = Math.min(0, ctl.v) * 2.8; if (ctl.dash > 0) { ctl.dash -= dt; lat += ctl.du * 9.5; up += ctl.dv * 6.5; ctl.spin += dt / 0.34 * 6.283 * (ctl.du >= 0 ? 1 : -1); } else ctl.spin = 0;
   Fl.x -= Math.sin(Fl.psi) * lat * dt; Fl.z += Math.cos(Fl.psi) * lat * dt; if (!(up < 0 && Fl.y < 0.6)) Fl.y += up * dt;
   Fl.V = Math.max(0, Fl.V - (0.45 * Math.abs(ctl.u) + Math.min(0, ctl.v)) * dt); // sliding and climbing cost a little speed; diving gives some back
   const b = $('bDash'), cdOn = ctl.cd > 0; if (cdOn !== control.was) { control.was = cdOn; b.classList.toggle('cd', cdOn); } $('dashFill').style.height = ctl.cd / 1.8 * 100 + '%';
@@ -897,7 +897,7 @@ function flyFrame(dt) {
     if (Fl.y <= gy + 0.05) { Fl.y = gy + 0.05; placePlane(); endFlight(gy ? '옥상에 떨어졌다' : '착륙!'); }
     else for (const c of colliders) { const hit = c.h ? Math.abs(Fl.x - c.x) < (c.bx || c.r) && Math.abs(Fl.z - c.z) < c.r && Fl.y < c.h : Math.hypot(Fl.x - c.x, Fl.y - c.y, Fl.z - c.z) < c.r; if (hit) { puff(Fl.x, Fl.y, Fl.z, 0xffffff, 14); flashFx('#fff', 0.4); shake = 0.6; endFlight('장애물에 걸렸다!'); break; } }
     updateChunks(Fl.x);
-    const cp = Math.cos(Fl.psi), sp = Math.sin(Fl.psi), want = V3(Fl.x - cp * 1.5, Math.max(Fl.y + 0.95, 0.5), Fl.z - sp * 1.5); if (Fl.t < 1.2 && want.x < camPos.x) want.x = camPos.x; camPos.lerp(want, Math.min(1, dt * 5)); // the camera waits for the plane instead of stepping back at the throw camLook.lerp(V3(Fl.x + cp * 4, Fl.y, Fl.z + sp * 4), Math.min(1, dt * 7)); camB.position.copy(camPos); if (shake > 0) camB.position.add(V3(rnd(-1, 1), rnd(-1, 1), rnd(-1, 1)).multiplyScalar(shake * 0.22)); camB.lookAt(camLook); if (shake > 0) camB.rotation.z += rnd(-1, 1) * shake * 0.06;
+    const cp = Math.cos(Fl.psi), sp = Math.sin(Fl.psi), want = V3(Fl.x - cp * 1.5, Math.max(Fl.y + 0.95, 0.5), Fl.z - sp * 1.5); if (Fl.t < 1.2 && want.x < camPos.x) want.x = camPos.x; camPos.lerp(want, Math.min(1, dt * 5)); camLook.lerp(V3(Fl.x + cp * 4, Fl.y, Fl.z + sp * 4), Math.min(1, dt * 7)); camB.position.copy(camPos); if (shake > 0) camB.position.add(V3(rnd(-1, 1), rnd(-1, 1), rnd(-1, 1)).multiplyScalar(shake * 0.22)); camB.lookAt(camLook); if (shake > 0) camB.rotation.z += rnd(-1, 1) * shake * 0.06;
   }
   for (const t of waterTexs) { t.offset.y = flyT * 0.012; t.offset.x = Math.sin(flyT * 0.25) * 0.03; } sunB.target.position.set(camB.position.x + 14, 0, camB.position.z); sunB.position.set(camB.position.x - 26, 70, camB.position.z - 30); pF.castShadow = pB.castShadow = true;
   { const base = camB.aspect < 1 ? 78 : 62, want = base + (Fl.flying ? clamp((Fl.V - 4) * 1.3, 0, 11) : 0); if (Math.abs(camB.fov - want) > 0.05) { camB.fov += (want - camB.fov) * Math.min(1, dt * 3); camB.updateProjectionMatrix(); } } ambience(dt);
