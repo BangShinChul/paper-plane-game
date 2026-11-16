@@ -229,7 +229,7 @@ button.pri { background: var(--blue); color: #fff; } button.pulse { animation: p
     <div class="card">
       <h2>잠시 멈춤</h2>
       <p id="pInfo"></p>
-      <div class="btns"><button id="bResume" type="button" class="pri">계속하기</button><button id="bRethrow" type="button">다시 던지기</button><button id="bPauseHome" type="button">처음 화면</button></div>
+      <div class="btns"><button id="bResume" type="button" class="pri">계속하기</button><button id="bRethrow" type="button">다시 던지기</button><button id="bPauseHome" type="button">처음 화면</button><button class="bSound" type="button">소리 켬</button></div>
     </div>
   </div>
   <div class="overlay gut" id="result" hidden>
@@ -1013,7 +1013,7 @@ function spawnEvent() { const bag = []; for (const k in WEIGHT) if (k !== lastSp
 /* ---- audio: small synth with a shared reverb, a wind bed that follows airspeed, and named effects ---- */
 const AU = { ctx: null, on: true }; try { AU.on = localStorage.getItem('paper-plane-sound') !== 'off'; } catch (e) {}
 function audio() {
-  if (!AU.on) return null;
+  if (!AU.on || AU.hold) return null;
   if (!AU.ctx) { try { const c = AU.ctx = new (window.AudioContext || window.webkitAudioContext)(), comp = c.createDynamicsCompressor(); AU.master = c.createGain(); AU.master.gain.value = 0.9; AU.master.connect(comp); comp.connect(c.destination);
       const len = Math.floor(c.sampleRate * 1.7), ir = c.createBuffer(2, len, c.sampleRate); for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.8); }
       AU.rev = c.createConvolver(); AU.rev.buffer = ir; const rg = c.createGain(); rg.gain.value = 0.4; AU.rev.connect(rg); rg.connect(AU.master);
@@ -1088,7 +1088,7 @@ function flyFrame(dt) {
 let paused = false, pauseW = 0;
 function setPause(v, quiet) { if (v && !(mode === 'fly' && Fl.flying)) return; if (v === paused) return; paused = v; $('pause').hidden = !v; ctl.su = ctl.sv = 0; ctl.id = -1; $('stick').hidden = true; keyL = keyR = keyU = keyD = false;
   if (v) $('pInfo').innerHTML = '거리 <b>' + Math.hypot(Fl.x - 0.6, Fl.z).toFixed(1) + ' m</b> · 체공 시간 <b>' + Fl.t.toFixed(1) + '초</b>';
-  try { if (AU.ctx) { if (v) AU.ctx.suspend(); else if (AU.on) AU.ctx.resume(); } } catch (e) {} if (!quiet && !v) sfx('click'); }
+  AU.hold = v; try { if (AU.ctx) { const g = AU.master.gain, now = AU.ctx.currentTime; g.cancelScheduledValues(now); if (v) { g.value = 0; AU.ctx.suspend(); } else if (AU.on) { AU.ctx.resume(); g.setTargetAtTime(0.9, now, 0.08); } } } catch (e) {} if (!quiet && !v) sfx('click'); }
 $('bPause').onclick = () => setPause(true); $('bResume').onclick = () => setPause(false); $('bRethrow').onclick = () => { setPause(false, true); $('bAgain').onclick(); }; $('bPauseHome').onclick = () => { setPause(false, true); setMode('title'); };
 addEventListener('keydown', e => { if ((e.code === 'KeyP' || e.code === 'Escape') && mode === 'fly') setPause(!paused); });
 document.addEventListener('visibilitychange', () => { if (document.hidden) setPause(true); }); addEventListener('blur', () => setPause(true));
@@ -1107,7 +1107,7 @@ function frame(t) {
 }
 function resize() { const w = canvas.clientWidth, h = canvas.clientHeight; renderer.setSize(w, h, false); camB.aspect = w / h; camB.fov = w < h ? 78 : 62; camB.updateProjectionMatrix(); setCam(); }
 addEventListener('resize', resize);
-window.__pp = { force: null, setPause, get paused() { return paused; }, paperG, camA, get suggs() { return suggs; }, applySugg, tapFold, mood: null, planeCode, planeFromCode, importCode, award, achGot, get hoops() { return hoops; }, get pads() { return pads; }, get path() { return path; }, get marks() { return fmarks; }, get guide() { return guide; }, get replay() { return replay; }, guideStart, replayStart, commitFold, set sym(v) { sym = v; }, planeG, camB, setGrip(g) { grip = g; refresh(); }, setLang, L, get lang() { return lang; }, AU, sparks, knock, ring, spark, popUp, get quality() { return quality; }, hangar, control, W0, paper, applyPaper, vo, ctl, dodge, get calls() { return renderer.info.render.calls; }, get trail() { return trail; }, get events() { return events; }, get ops() { return ops; }, set ops(v) { ops = v; refresh(); }, get aero() { return aero; }, Fl, launch, build, analyze, setMode, PRESET, get cur() { return cur; }, get mode() { return mode; }, physics };
+window.__pp = { force: null, setSound, setPause, get paused() { return paused; }, paperG, camA, get suggs() { return suggs; }, applySugg, tapFold, mood: null, planeCode, planeFromCode, importCode, award, achGot, get hoops() { return hoops; }, get pads() { return pads; }, get path() { return path; }, get marks() { return fmarks; }, get guide() { return guide; }, get replay() { return replay; }, guideStart, replayStart, commitFold, set sym(v) { sym = v; }, planeG, camB, setGrip(g) { grip = g; refresh(); }, setLang, L, get lang() { return lang; }, AU, sparks, knock, ring, spark, popUp, get quality() { return quality; }, hangar, control, W0, paper, applyPaper, vo, ctl, dodge, get calls() { return renderer.info.render.calls; }, get trail() { return trail; }, get events() { return events; }, get ops() { return ops; }, set ops(v) { ops = v; refresh(); }, get aero() { return aero; }, Fl, launch, build, analyze, setMode, PRESET, get cur() { return cur; }, get mode() { return mode; }, physics };
 /* ---- language: Korean source text is translated on its way to the screen, so every label, toast and readout switches at once ---- */
 const I18N = {
   '1 접기': '1 Fold', '2 모양 잡기': '2 Shape', '3 날리기': '3 Fly', '게임 화면': 'Game view',
