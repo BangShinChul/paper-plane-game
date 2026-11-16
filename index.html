@@ -48,10 +48,10 @@ button.pri { background: var(--blue); color: #fff; } button.pulse { animation: p
 .prow { display: grid; grid-template-columns: 38px 1fr; gap: 8px; align-items: center; font-size: 13px; } .sw { display: flex; flex-wrap: wrap; gap: 5px; min-width: 0; }
 .sw button { width: 30px; height: 30px; padding: 0; border-radius: 50%; box-shadow: none; border: 2px solid var(--ink); } .sw button.txt { width: auto; height: auto; border-radius: 3px; padding: 4px 9px; font-size: 12px; }
 .sw button.on { outline: 3px solid var(--blue); outline-offset: 2px; } .sw button.txt.on { background: var(--mark); }
-#achPop { z-index: 40 !important; } #achPop .pop { pointer-events: auto; max-height: 100%; overflow-y: auto; touch-action: pan-y; display: grid; gap: 8px; width: min(440px, 100%); } #achList { display: grid; gap: 5px; } #achList div { display: grid; grid-template-columns: 22px 1fr; gap: 2px 6px; padding: 5px 8px; border: 1.5px solid var(--rule); border-radius: 3px; background: #fff; opacity: 0.62; } #achList div.got { opacity: 1; border-color: var(--ink); background: var(--mark); } #achList i { grid-row: span 2; font-style: normal; font-weight: 700; } #achList b { font-size: 14px; } #achList span { font-size: 12px; }
+#achPop { z-index: 40 !important; } #fxPop { z-index: 8; } #fxPop .dim { font-size: 12px; } #achPop .pop, #fxPop .pop { pointer-events: auto; max-height: 100%; overflow-y: auto; touch-action: pan-y; display: grid; gap: 8px; width: min(440px, 100%); } #achList { display: grid; gap: 5px; } #achList div { display: grid; grid-template-columns: 22px 1fr; gap: 2px 6px; padding: 5px 8px; border: 1.5px solid var(--rule); border-radius: 3px; background: #fff; opacity: 0.62; } #achList div.got { opacity: 1; border-color: var(--ink); background: var(--mark); } #achList i { grid-row: span 2; font-style: normal; font-weight: 700; } #achList b { font-size: 14px; } #achList span { font-size: 12px; }
 #rPath { display: block; width: 100%; height: 84px; margin: 6px 0 2px; border: 1.5px solid var(--rule); border-radius: 3px; background: #fff; } #rLegend { margin: 0 0 6px; } #rAch { display: grid; gap: 4px; margin-bottom: 6px; } #rAch div { padding: 4px 8px; background: var(--mark); border: 1.5px solid var(--ink); border-radius: 3px; font-size: 14px; }
 .share { display: grid; gap: 6px; padding-top: 8px; border-top: 1.5px dashed var(--rule); } #hCode { min-width: 0; font: 600 13px var(--text); padding: 7px 9px; border: 1.5px solid var(--ink); border-radius: 3px; background: #fff; color: var(--ink); user-select: text; -webkit-user-select: text; }
-#hangarPop, #achPop { position: absolute; left: 0; right: 0; top: 44px; bottom: 12px; display: flex; justify-content: center; align-items: flex-start; pointer-events: none; z-index: 5; }
+#hangarPop, #achPop, #fxPop { position: absolute; left: 0; right: 0; top: 44px; bottom: 12px; display: flex; justify-content: center; align-items: flex-start; pointer-events: none; z-index: 5; }
 #hangarPop .pop { max-height: 100%; overflow-y: auto; touch-action: pan-y; } #hName { min-width: 0; font: 600 14px var(--text); padding: 7px 9px; border: 1.5px solid var(--ink); border-radius: 3px; background: #fff; color: var(--ink); user-select: text; -webkit-user-select: text; }
 #hList { display: grid; gap: 6px; } #hList .it { display: grid; grid-template-columns: 64px 1fr auto; gap: 8px; align-items: center; border: 1.5px solid var(--rule); padding: 4px 6px; background: var(--paper); }
 #hList img { width: 64px; height: 48px; object-fit: cover; border: 1px solid var(--rule); display: block; } #hList .nm { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } #hList .dt { font-size: 11px; color: var(--dim); }
@@ -190,7 +190,6 @@ button.pri { background: var(--blue); color: #fff; } button.pulse { animation: p
       <div class="prow"><span>앞면</span><div class="sw" id="swF"></div></div>
       <div class="prow"><span>뒷면</span><div class="sw" id="swB"></div></div>
       <div class="prow"><span>무늬</span><div class="sw" id="swP"></div></div>
-      <div class="prow"><span>효과</span><div class="sw" id="swX"></div></div>
       <div class="btns"><button id="bRandom2" type="button">랜덤</button><button id="bSwap" type="button">앞뒤 바꾸기</button><button id="bStyleClose" type="button" class="pri">완료</button></div>
     </div>
   </div>
@@ -224,7 +223,10 @@ button.pri { background: var(--blue); color: #fff; } button.pulse { animation: p
   <div id="banner" hidden></div>
   <div id="aim" class="gut" hidden>
     <p class="hint">길게 눌렀다 떼거나, 아래로 당겼다 위로 밀어 던지세요</p>
-    <div class="row"><span class="grp"><label for="ang">던지는 각도</label><input id="ang" type="range" min="-5" max="40" value="10"><b id="angV">10°</b></span><span class="grp"><span>당김</span><div id="pow"><i id="powFill"></i></div></span><span class="grp"><button class="bSound" type="button">소리 켬</button><button id="bRefold" type="button">다시 접기</button></span></div>
+    <div class="row"><span class="grp"><label for="ang">던지는 각도</label><input id="ang" type="range" min="-5" max="40" value="10"><b id="angV">10°</b></span><span class="grp"><span>당김</span><div id="pow"><i id="powFill"></i></div></span><span class="grp"><button id="bFx" type="button"><span>효과</span>: <span id="fxName">없음</span></button><button class="bSound" type="button">소리 켬</button><button id="bRefold" type="button">다시 접기</button></span></div>
+  </div>
+  <div id="fxPop" class="gut" hidden>
+    <div class="pop"><b>꼬리 효과</b><span class="dim">꾸미기 전용이에요. 도전 과제를 달성하면 하나씩 열립니다.</span><div class="sw" id="swX"></div><div class="btns"><button id="bFxClose" type="button" class="pri">완료</button></div></div>
   </div>
   <div id="steer" hidden>화면을 누른 채 끌면 좌우로, 아래로 끌면 내려가요</div>
   <button id="bPause" type="button" aria-label="잠시 멈춤" hidden>Ⅱ</button>
@@ -600,7 +602,7 @@ function setSheet(k, quiet) { if (!SHEETS[k] || (paper.shape || 'sq') === k) ret
 function styleUI() {
   const mk = (host, key) => { host.innerHTML = ''; COLORS.forEach(c => { const b = document.createElement('button'); b.type = 'button'; b.style.background = c; b.setAttribute('aria-label', (key === 'front' ? '앞면 ' : '뒷면 ') + c); b.className = paper[key] === c ? 'on' : ''; b.onclick = () => { paper[key] = c; applyPaper(); styleUI(); }; host.appendChild(b); }); };
   mk($('swF'), 'front'); mk($('swB'), 'back'); const hp = $('swP'); hp.innerHTML = '';
-  { const hx = $('swX'); hx.innerHTML = ''; FX.forEach(f => { const b = document.createElement('button'), open = fxOpen(f[0]); b.type = 'button'; b.className = 'txt' + (fx === f[0] ? ' on' : '') + (open ? '' : ' lock'); b.innerHTML = '<span>' + f[1] + '</span>' + (open ? '' : ' <i>잠김</i>'); b.onclick = () => setFx(f[0]); hx.appendChild(b); }); }
+  { const hx = $('swX'); hx.innerHTML = ''; FX.forEach(f => { const b = document.createElement('button'), open = fxOpen(f[0]); b.type = 'button'; b.className = 'txt' + (fx === f[0] ? ' on' : '') + (open ? '' : ' lock'); b.innerHTML = '<span>' + f[1] + '</span>' + (open ? '' : ' <i>잠김</i>'); b.onclick = () => setFx(f[0]); hx.appendChild(b); }); $('fxName').textContent = (FX.find(f => f[0] === fx && fxOpen(fx)) || FX[0])[1]; }
   { const hs = $('swS'); hs.innerHTML = ''; [['sq', '정사각형'], ['a4p', 'A4 세로'], ['a4l', 'A4 가로'], ['circle', '원형']].forEach(([k, n]) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = n; b.className = 'txt' + ((paper.shape || 'sq') === k ? ' on' : ''); b.onclick = () => setSheet(k); hs.appendChild(b); }); }
   PATS.forEach(([k, n]) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = n; b.className = 'txt' + (paper.pat === k ? ' on' : ''); b.onclick = () => { paper.pat = k; applyPaper(); styleUI(); }; hp.appendChild(b); });
 }
@@ -621,8 +623,8 @@ function setMode(m) {
   mode = m; $('title').hidden = m !== 'title'; $('steps').hidden = m === 'title'; if (m === 'title') titleShow();
   $('foldUI').hidden = m !== 'fold'; $('shapeUI').hidden = m !== 'shape'; $('hud').hidden = m !== 'fly' && m !== 'aim'; $('aim').hidden = m !== 'aim'; $('steer').hidden = m !== 'fly'; $('alt').hidden = m !== 'fly'; $('vig').hidden = m !== 'fly' && m !== 'aim' && m !== 'title'; $('bDash').hidden = m !== 'fly'; $('bBoost').hidden = m !== 'fly'; $('bPause').hidden = m !== 'fly'; stickReset(); if (m !== 'fly' && paused) setPause(false, true); $('wind').hidden = m !== 'fly' && m !== 'aim'; if (m !== 'fly') $('stick').hidden = true; $('result').hidden = m !== 'result'; $('banner').hidden = true;
   document.querySelectorAll('#steps span').forEach(s => s.classList.toggle('on', s.dataset.s === (m === 'aim' || m === 'result' ? 'fly' : m === 'shape' ? 'fold' : m)));
-  if (m !== 'fold') { $('stylePop').hidden = true; replay = null; } if (m !== 'fold' && m !== 'shape') $('hangarPop').hidden = true;
-  if (m === 'fold' || m === 'shape') { refresh(); setCam(); }
+  if (m !== 'fold') { $('stylePop').hidden = true; replay = null; } if (m !== 'aim') $('fxPop').hidden = true; else styleUI(); if (m !== 'fold' && m !== 'shape') $('hangarPop').hidden = true;
+  if (m === 'fold' || m === 'shape') { Fl.flying = false; try { if (AU.ctx) { AU.windG.gain.cancelScheduledValues(AU.ctx.currentTime); AU.windG.gain.setTargetAtTime(0, AU.ctx.currentTime, 0.12); } } catch (e) {} refresh(); setCam(); }
 }
 /* ---- hangar: save folded planes in this browser and load them back ---- */
 const HK = 'paper-plane-hangar-v1';
@@ -961,6 +963,7 @@ function finishExtras(d, bull) { if (d > ((bestLoad() || { d: 0 }).d)) { try { l
   const ok = []; if (Fl.starN >= 10) ok.push('star10'); if (Fl.near >= 3) ok.push('near3'); if (challenge && d > challenge.d) ok.push('rival'); ok.push('first'); if (d >= 50) ok.push('d50'); if (d >= 100) ok.push('d100'); if (d >= 200) ok.push('d200'); if (d >= 400) ok.push('d400'); if (Fl.t >= 15) ok.push('t15'); if (Fl.t >= 30) ok.push('t30'); if (Fl.maxY >= 20) ok.push('h20');
   if (d >= 150 && !Fl.hits) ok.push('clean'); if (Fl.hoops >= 3) ok.push('hoop3'); if (Fl.hoops >= 8) ok.push('hoop8'); if (Fl.therm >= 3) ok.push('therm3'); if (Fl.ufo) ok.push('ufo'); if (bull) ok.push('bull'); if (origin === 'self' && d >= 60) ok.push('own');
   const fresh = award(ok), mi = MEDALS.findIndex(q => d >= q[0]), nx = MEDALS[(mi < 0 ? MEDALS.length : mi) - 1]; $('rAch').innerHTML = ((mi >= 0 || nx) ? '<div class="medal">' + (mi >= 0 ? '<b>' + MEDALS[mi][1] + '</b>' : '') + (nx ? (mi >= 0 ? ' · ' : '') + '<span>다음 메달까지</span> <b>' + (nx[0] - d).toFixed(1) + ' m</b>' : '') + '</div>' : '') + fresh.map(id => '<div><b>도전 과제 달성</b> ★ <span>' + ACH.find(a => a[0] === id)[1] + '</span></div>' + (FX.find(f => f[2] === id) ? '<div><b>새 효과 잠금 해제</b> ★ <span>' + FX.find(f => f[2] === id)[1] + '</span></div>' : '')).join(''); if (fresh.length) setTimeout(() => sfx('record'), 900); }
+$('bFx').onclick = () => { styleUI(); $('fxPop').hidden = !$('fxPop').hidden; }; $('bFxClose').onclick = () => { $('fxPop').hidden = true; };
 $('bAch').onclick = () => { achUI(); $('achPop').hidden = false; }; $('bAchClose').onclick = () => { $('achPop').hidden = true; }; achBtn();
 /* ---- share codes: the folds, grip, trim and paper packed into a short text ---- */
 function planeCode() { const r = v => Math.round(v * 1e4) / 1e4, j = { o: ops.map(o => o.flip ? 0 : [r(o.g[0]), r(o.g[1]), r(o.t[0]), r(o.t[1]), o.mode === 'flap' ? 1 : 0, o.angle]), g: grip ? [r(grip[0]), r(grip[1])] : 0, r: fwdRot, u: upFlip ? 1 : 0, b: [bend.l, bend.r], p: [paper.front, paper.back, paper.pat], s: paper.shape || 'sq' };
@@ -1275,7 +1278,7 @@ const I18N = {
   '부스트': 'Boost', '부스트!': 'Boost!', '부스트 준비!': 'Boost ready!', '별 5개를 모으면 부스트를 쓸 수 있어요': 'Collect 5 stars to use a boost', '아슬아슬! ★+1': 'Close call! ★+1', '별': 'Stars', '아슬아슬': 'Close calls', '도전': 'Challenge', '최고': 'Best', '도전 성공!': 'Challenge beaten!', '부족': 'short',
   '다이아 메달': 'Diamond medal', '금메달': 'Gold medal', '은메달': 'Silver medal', '동메달': 'Bronze medal', '다음 메달까지': 'next medal in', '도전장 보내기': 'Send a challenge', '도전 링크를 복사했어요': 'Challenge link copied', '아래 내용을 복사해 주세요': 'Copy the text below',
   '별 수집가': 'Star collector', '한 번의 비행에서 별 10개 모으기': 'Collect 10 stars in one flight', '간발의 차': 'By a whisker', '한 번의 비행에서 아슬아슬하게 3번 피하기': '3 close calls in one flight', '도전자': 'Challenger', '받은 도전 기록 넘기기': 'Beat a challenge you were sent',
-  '효과': 'Effect', '없음': 'None', '반짝이': 'Sparkles', '꽃잎': 'Petals', '비눗방울': 'Bubbles', '눈송이': 'Snowflakes', '불꽃': 'Flames', '무지개': 'Rainbow', '번개': 'Lightning', '황금 가루': 'Gold dust', '잠김': 'locked', '잠금 해제 조건': 'Unlock by', '보상': 'Reward', '새 효과 잠금 해제': 'New effect unlocked',
+  '효과': 'Effect', '꼬리 효과': 'Trail effect', '꾸미기 전용이에요. 도전 과제를 달성하면 하나씩 열립니다.': 'Cosmetic only. Each one unlocks with a challenge.', '없음': 'None', '반짝이': 'Sparkles', '꽃잎': 'Petals', '비눗방울': 'Bubbles', '눈송이': 'Snowflakes', '불꽃': 'Flames', '무지개': 'Rainbow', '번개': 'Lightning', '황금 가루': 'Gold dust', '잠김': 'locked', '잠금 해제 조건': 'Unlock by', '보상': 'Reward', '새 효과 잠금 해제': 'New effect unlocked',
   '최고 기록 돌파!': 'New best!', '플레이어': 'Player', '비행기': 'Plane', '각도': 'angle', '평평': 'Flat'
 };
 const I18R = [
