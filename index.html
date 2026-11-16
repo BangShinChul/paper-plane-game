@@ -71,6 +71,7 @@ button.pri { background: var(--blue); color: #fff; } button.pulse { animation: p
 #chips { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-top: 6px; } #chips span { background: var(--red); color: #fff; font: 600 12px var(--text); padding: 2px 9px; border: 1.5px solid var(--ink); border-radius: 12px; }
 #alt { position: absolute; left: max(14px, env(safe-area-inset-left, 0px)); top: 28%; height: 36%; width: 14px; border: 2px solid var(--ink); background: rgba(251,252,255,.7); pointer-events: none; display: flex; align-items: flex-end; }
 #alt i { display: block; width: 100%; background: var(--blue); } #alt span { position: absolute; top: -22px; left: -4px; font: 600 12px var(--text); color: #fff; text-shadow: 0 1px 3px var(--ink); white-space: nowrap; }
+#bPause { position: absolute; top: 44px; right: max(8px, env(safe-area-inset-right, 0px)); z-index: 6; width: 44px; height: 44px; padding: 0; font: 700 18px var(--text); } #pause { z-index: 30; }
 #bDash { position: absolute; right: max(18px, env(safe-area-inset-right, 0px)); bottom: 54px; width: 92px; height: 92px; border-radius: 50%; background: var(--mark); font: 700 26px var(--hand); padding: 0; overflow: hidden; }
 #bDash b { position: relative; z-index: 1; font: inherit; } #bDash i { position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: rgba(23,38,77,.45); }
 #bDash.cd { background: var(--paper); }
@@ -218,11 +219,19 @@ button.pri { background: var(--blue); color: #fff; } button.pulse { animation: p
     <div class="row"><span class="grp"><label for="ang">던지는 각도</label><input id="ang" type="range" min="-5" max="40" value="10"><b id="angV">10°</b></span><span class="grp"><span>당김</span><div id="pow"><i id="powFill"></i></div></span><span class="grp"><button class="bSound" type="button">소리 켬</button><button id="bRefold" type="button">다시 접기</button></span></div>
   </div>
   <div id="steer" hidden>화면을 누른 채 끌면 좌우로, 아래로 끌면 내려가요</div>
+  <button id="bPause" type="button" aria-label="잠시 멈춤" hidden>Ⅱ</button>
   <button id="bDash" type="button" hidden><b>회피</b><i id="dashFill"></i></button>
   <div id="stick" hidden><i></i></div>
   <div id="toast" hidden></div>
   <div id="loupe" hidden><span>확대</span></div>
 
+  <div class="overlay gut" id="pause" hidden>
+    <div class="card">
+      <h2>잠시 멈춤</h2>
+      <p id="pInfo"></p>
+      <div class="btns"><button id="bResume" type="button" class="pri">계속하기</button><button id="bRethrow" type="button">다시 던지기</button><button id="bPauseHome" type="button">처음 화면</button></div>
+    </div>
+  </div>
   <div class="overlay gut" id="result" hidden>
     <div class="card">
       <h2 id="rTitle">착륙!</h2>
@@ -590,7 +599,7 @@ $('bDart').onclick = () => { if (guide) guideEnd(false); origin = 'preset'; ops 
 $('bGlider').onclick = () => { if (guide) guideEnd(false); origin = 'preset'; ops = PRESET.glider(); creases = []; grip = null; setBend(25); refresh(); toast('글라이더를 접었어요', 2000); };
 function setMode(m) {
   mode = m; $('title').hidden = m !== 'title'; $('steps').hidden = m === 'title'; if (m === 'title') titleShow();
-  $('foldUI').hidden = m !== 'fold'; $('shapeUI').hidden = m !== 'shape'; $('hud').hidden = m !== 'fly' && m !== 'aim'; $('aim').hidden = m !== 'aim'; $('steer').hidden = m !== 'fly'; $('alt').hidden = m !== 'fly'; $('vig').hidden = m !== 'fly' && m !== 'aim' && m !== 'title'; $('bDash').hidden = m !== 'fly'; $('wind').hidden = m !== 'fly' && m !== 'aim'; if (m !== 'fly') $('stick').hidden = true; $('result').hidden = m !== 'result'; $('banner').hidden = true;
+  $('foldUI').hidden = m !== 'fold'; $('shapeUI').hidden = m !== 'shape'; $('hud').hidden = m !== 'fly' && m !== 'aim'; $('aim').hidden = m !== 'aim'; $('steer').hidden = m !== 'fly'; $('alt').hidden = m !== 'fly'; $('vig').hidden = m !== 'fly' && m !== 'aim' && m !== 'title'; $('bDash').hidden = m !== 'fly'; $('bPause').hidden = m !== 'fly'; if (m !== 'fly' && paused) setPause(false, true); $('wind').hidden = m !== 'fly' && m !== 'aim'; if (m !== 'fly') $('stick').hidden = true; $('result').hidden = m !== 'result'; $('banner').hidden = true;
   document.querySelectorAll('#steps span').forEach(s => s.classList.toggle('on', s.dataset.s === (m === 'aim' || m === 'result' ? 'fly' : m)));
   if (m !== 'fold') { $('stylePop').hidden = true; replay = null; } if (m !== 'fold' && m !== 'shape') $('hangarPop').hidden = true;
   if (m === 'fold' || m === 'shape') { refresh(); setCam(); }
@@ -1076,7 +1085,15 @@ function flyFrame(dt) {
   for (let i = events.length - 1; i >= 0; i--) if (events[i].upd(dt, flyT)) { sceneB.remove(events[i].g); events.splice(i, 1); }
   ground.position.set(Math.round(camB.position.x / 8.46) * 8.46, 0, Math.round(camB.position.z / 8.46) * 8.46); far.position.set(camB.position.x, 0, camB.position.z);
 }
+let paused = false, pauseW = 0;
+function setPause(v, quiet) { if (v && !(mode === 'fly' && Fl.flying)) return; if (v === paused) return; paused = v; $('pause').hidden = !v; ctl.su = ctl.sv = 0; ctl.id = -1; $('stick').hidden = true; keyL = keyR = keyU = keyD = false;
+  if (v) $('pInfo').innerHTML = '거리 <b>' + Math.hypot(Fl.x - 0.6, Fl.z).toFixed(1) + ' m</b> · 체공 시간 <b>' + Fl.t.toFixed(1) + '초</b>';
+  try { if (AU.ctx) { if (v) AU.ctx.suspend(); else if (AU.on) AU.ctx.resume(); } } catch (e) {} if (!quiet && !v) sfx('click'); }
+$('bPause').onclick = () => setPause(true); $('bResume').onclick = () => setPause(false); $('bRethrow').onclick = () => { setPause(false, true); $('bAgain').onclick(); }; $('bPauseHome').onclick = () => { setPause(false, true); setMode('title'); };
+addEventListener('keydown', e => { if ((e.code === 'KeyP' || e.code === 'Escape') && mode === 'fly') setPause(!paused); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) setPause(true); }); addEventListener('blur', () => setPause(true));
 function frame(t) {
+  if (paused) { last = t; if (canvas.width !== pauseW) { pauseW = canvas.width; renderer.setScissorTest(false); renderer.setViewport(0, 0, canvas.clientWidth, canvas.clientHeight); renderer.render(sceneB, camB); } requestAnimationFrame(frame); return; }
   let dt = Math.min(0.05, (t - last) / 1000 || 0.016); last = t; const raw = dt; if (hitStop > 0) { hitStop -= raw; dt *= 0.12; } // a beat of slow motion on impact
   if (mode === 'fly') { perfT += raw; if (++perfN >= 90) { const avg = perfT / perfN; perfT = perfN = 0; if (avg > 0.03 && quality > 0) { quality--; if (quality === 1) sunB.castShadow = false; else { renderer.setPixelRatio(1); resize(); } } } }
   const W = canvas.clientWidth, H = canvas.clientHeight; renderer.setScissorTest(false); renderer.setViewport(0, 0, W, H);
@@ -1090,7 +1107,7 @@ function frame(t) {
 }
 function resize() { const w = canvas.clientWidth, h = canvas.clientHeight; renderer.setSize(w, h, false); camB.aspect = w / h; camB.fov = w < h ? 78 : 62; camB.updateProjectionMatrix(); setCam(); }
 addEventListener('resize', resize);
-window.__pp = { force: null, paperG, camA, get suggs() { return suggs; }, applySugg, tapFold, mood: null, planeCode, planeFromCode, importCode, award, achGot, get hoops() { return hoops; }, get pads() { return pads; }, get path() { return path; }, get marks() { return fmarks; }, get guide() { return guide; }, get replay() { return replay; }, guideStart, replayStart, commitFold, set sym(v) { sym = v; }, planeG, camB, setGrip(g) { grip = g; refresh(); }, setLang, L, get lang() { return lang; }, AU, sparks, knock, ring, spark, popUp, get quality() { return quality; }, hangar, control, W0, paper, applyPaper, vo, ctl, dodge, get calls() { return renderer.info.render.calls; }, get trail() { return trail; }, get events() { return events; }, get ops() { return ops; }, set ops(v) { ops = v; refresh(); }, get aero() { return aero; }, Fl, launch, build, analyze, setMode, PRESET, get cur() { return cur; }, get mode() { return mode; }, physics };
+window.__pp = { force: null, setPause, get paused() { return paused; }, paperG, camA, get suggs() { return suggs; }, applySugg, tapFold, mood: null, planeCode, planeFromCode, importCode, award, achGot, get hoops() { return hoops; }, get pads() { return pads; }, get path() { return path; }, get marks() { return fmarks; }, get guide() { return guide; }, get replay() { return replay; }, guideStart, replayStart, commitFold, set sym(v) { sym = v; }, planeG, camB, setGrip(g) { grip = g; refresh(); }, setLang, L, get lang() { return lang; }, AU, sparks, knock, ring, spark, popUp, get quality() { return quality; }, hangar, control, W0, paper, applyPaper, vo, ctl, dodge, get calls() { return renderer.info.render.calls; }, get trail() { return trail; }, get events() { return events; }, get ops() { return ops; }, set ops(v) { ops = v; refresh(); }, get aero() { return aero; }, Fl, launch, build, analyze, setMode, PRESET, get cur() { return cur; }, get mode() { return mode; }, physics };
 /* ---- language: Korean source text is translated on its way to the screen, so every label, toast and readout switches at once ---- */
 const I18N = {
   '1 접기': '1 Fold', '2 모양 잡기': '2 Shape', '3 날리기': '3 Fly', '게임 화면': 'Game view',
@@ -1140,6 +1157,7 @@ const I18N = {
   '날개까지 접었어요! “다음: 모양 잡기”를 눌러 주세요.': 'Wings are done! Press “Next: shape”.', '추천 접기를 누르거나, 종이를 직접 끌어 접으세요.': 'Tap a suggested fold, or drag the paper to fold it yourself.',
   '공유': 'Share', '지금 비행기 코드 복사': 'Copy code for this plane', '링크 복사': 'Copy link', '코드로 불러오기': 'Load from code', '공유 비행기': 'Shared plane', '공유 코드를 복사했어요': 'Share code copied', '공유 링크를 복사했어요': 'Share link copied', '자동 복사가 막혀 있어요. 아래 칸의 내용을 직접 복사해 주세요': 'Copying is blocked here. Copy the text from the box below', '코드를 읽을 수 없어요. 처음부터 끝까지 복사했는지 확인해 주세요': 'That code could not be read. Check that you copied all of it', '도전 과제 달성': 'Challenge complete', '고리': 'Hoop', '충돌': 'Hit', '첫 비행': 'First flight', '비행기를 한 번 날려 보기': 'Throw a plane once', '모범생': 'Good student', '따라 접기를 끝까지 완성하기': 'Finish a folding guide', '동네 한 바퀴': 'Around the block', '50 m 날리기': 'Fly 50 m', '백 미터 클럽': '100 m club', '100 m 날리기': 'Fly 100 m', '장거리 선수': 'Long hauler', '200 m 날리기': 'Fly 200 m', '바람의 전설': 'Legend of the wind', '400 m 날리기': 'Fly 400 m', '여유로운 활공': 'Easy glide', '15초 동안 떠 있기': 'Stay up for 15 s', '구름 산책': 'Cloud walk', '30초 동안 떠 있기': 'Stay up for 30 s', '높이 더 높이': 'Higher and higher', '높이 20 m까지 오르기': 'Reach 20 m of height', '무사고 비행': 'Clean flight', '방해꾼에게 맞지 않고 150 m 날리기': 'Fly 150 m without being hit', '고리 사냥꾼': 'Hoop hunter', '한 번의 비행에서 고리 3개 통과': '3 hoops in one flight', '곡예 비행사': 'Stunt pilot', '한 번의 비행에서 고리 8개 통과': '8 hoops in one flight', '열기류 서퍼': 'Thermal surfer', '한 번의 비행에서 상승기류 3번 타기': 'Ride 3 thermals in one flight', '우주 친구': 'Friend from space', '외계인의 도움 받기': 'Get a lift from the alien', '정밀 착륙': 'Spot landing', '과녁 위에 착륙하기': 'Land on a target', '나만의 설계': 'My own design', '예시 없이 직접 접은 비행기로 60 m 날리기': 'Fly 60 m with a plane you folded yourself',
   '받은 코드 붙여넣기': 'Paste a code here', '공유 코드': 'Share code', '비행 궤적': 'Flight path', '도전 과제': 'Challenges',
+  '거리': 'Distance', '잠시 멈춤': 'Paused', '계속하기': 'Resume', '다시 던지기': 'Throw again',
   '최고 기록 돌파!': 'New best!', '플레이어': 'Player', '비행기': 'Plane', '각도': 'angle', '평평': 'Flat'
 };
 const I18R = [
