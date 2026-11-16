@@ -35,7 +35,9 @@ body { background: #cfe0f7; color: var(--ink); font-family: var(--text); overflo
 .btns { display: flex; flex-wrap: wrap; gap: 6px; }
 .sheet .tog { position: absolute; right: max(12px, env(safe-area-inset-right, 0px)); top: -37px; padding: 5px 10px; font-size: 12px; }
 #foldUI.min { padding-block: 4px; } #foldUI.min .hint, #foldUI.min .btns { display: none; }
-@media (max-width: 700px) { #foldUI .hint { font-size: 16px; margin-bottom: 6px; } #foldUI .btns { flex-wrap: nowrap; overflow-x: auto; touch-action: pan-x; padding: 0 4px 8px 0; } #foldUI .btns button { flex: none; } }
+@media (max-width: 700px) { #foldUI .hint { font-size: 16px; margin-bottom: 6px; } #foldUI .btns { padding: 0 4px 6px 0; } }
+#foldUI .btns { flex-wrap: wrap; } #foldUI:not(.more) .btns [data-adv] { display: none; } #foldUI.more { max-height: 62%; overflow-y: auto; touch-action: pan-y; }
+#sugg { align-items: center; } #sugg .lab { font: 700 13px var(--text); } #sugg button { display: inline-flex; align-items: center; gap: 6px; background: #fff; } #sugg button i { width: 11px; height: 11px; border-radius: 50%; flex: none; }
 button { font: 600 13px/1.3 var(--text); color: var(--ink); background: var(--paper); border: 1.5px solid var(--ink); padding: 8px 11px; cursor: pointer; border-radius: 3px; box-shadow: 2px 2px 0 var(--ink); }
 button:active { transform: translate(2px, 2px); box-shadow: none; }
 button:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
@@ -134,28 +136,30 @@ button.pri { background: var(--blue); color: #fff; } button.pulse { animation: p
 
   <div class="sheet gut" id="foldUI">
     <button id="bMin" class="tog" type="button" aria-expanded="true">안내판 접기 ▾</button>
-    <p class="hint" id="foldHint">모서리나 종이 위를 잡고 끌면 접힙니다. 두 손가락으로 끌면 종이가 움직이고, 벌리면 확대됩니다.</p>
+    <p class="hint" id="foldHint">추천 접기를 누르거나, 종이를 직접 끌어 접으세요.</p>
+    <div class="btns" id="sugg" hidden></div>
     <div class="btns">
       <button id="bGuideStop" type="button" class="pri" hidden>혼자 접기</button>
+      <button id="bUndo" type="button">되돌리기</button>
+      <button id="bFlip" type="button">뒤집기</button>
+      <button id="bReset" type="button">새 종이</button>
       <button id="bGuideDart" type="button" class="on">따라 접기: 다트</button>
       <button id="bGuideGlider" type="button" class="on">따라 접기: 글라이더</button>
-      <button id="bUndo" type="button">되돌리기</button>
-      <button id="bUnfold" type="button">펼치기 (자국 남김)</button>
-      <button id="bFlip" type="button">뒤집기</button>
-      <button id="bMode" type="button">겹: 잡은 겹만</button>
-      <button id="bSym" type="button" class="on">대칭 접기 켬</button>
-      <button id="bReplay" type="button">접는 과정 보기</button>
-      <button id="bSnap" type="button" class="on">스냅 켬</button>
-      <button id="bHangar" type="button">보관함 (저장·불러오기)</button>
-      <button id="bStyle" type="button">종이 꾸미기</button>
-      <button id="bRandom" type="button">랜덤 종이</button>
-      <button id="bFit" type="button">화면 맞춤</button>
-      <button id="bHome" type="button">처음 화면</button>
-      <button class="bSound" type="button">소리 켬</button>
-      <button id="bReset" type="button">새 종이</button>
-      <button id="bDart" type="button">예시: 다트</button>
-      <button id="bGlider" type="button">예시: 글라이더</button>
+      <button id="bMore" type="button" aria-expanded="false">더보기</button>
       <button id="bToShape" type="button" class="pri">다음: 모양 잡기</button>
+      <button data-adv id="bUnfold" type="button">펼치기 (자국 남김)</button>
+      <button data-adv id="bMode" type="button">겹: 잡은 겹만</button>
+      <button data-adv id="bSym" type="button" class="on">대칭 접기 켬</button>
+      <button data-adv id="bReplay" type="button">접는 과정 보기</button>
+      <button data-adv id="bSnap" type="button" class="on">스냅 켬</button>
+      <button data-adv id="bHangar" type="button">보관함 (저장·불러오기)</button>
+      <button data-adv id="bStyle" type="button">종이 꾸미기</button>
+      <button data-adv id="bRandom" type="button">랜덤 종이</button>
+      <button data-adv id="bFit" type="button">화면 맞춤</button>
+      <button data-adv id="bDart" type="button">예시: 다트</button>
+      <button data-adv id="bGlider" type="button">예시: 글라이더</button>
+      <button data-adv id="bHome" type="button">처음 화면</button>
+      <button data-adv class="bSound" type="button">소리 켬</button>
     </div>
   </div>
 
@@ -475,13 +479,13 @@ function showStats() {
 function toast(msg, ms) { const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => { t.hidden = true; }, ms || 1800); }
 canvas.addEventListener('pointerdown', e => {
   canvas.setPointerCapture(e.pointerId);
-  if (mode === 'fold' && replay) { replay = null; refresh(); return; }
+  if (mode === 'fold' && replay) { const quick = replay.fast; replay = null; refresh(); if (!quick) return; }
   if (mode === 'fold') { e.preventDefault(); pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (e.pointerType === 'mouse' && e.button !== 0) { panM = { x: e.clientX, y: e.clientY }; return; }
     if (pts.size >= 2) { if (drag) { drag = null; refresh(); } const [a, b] = [...pts.values()]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2, x: vo.x, y: vo.y, z: vo.z }; return; }
     if (drag) return; const touch = e.pointerType !== 'mouse', { p } = planePoint(e); let g = snap(p, touch ? 0.1 : 0.05);
     if (snapKind !== 'v' && !topFace(p)) { g = snap(p, 0.24); if (snapKind !== 'v') { toast('종이 위나 모서리 가까이를 잡아 주세요', 1400); return; } } // near miss: take the closest corner
-    drag = { g, t: g, id: e.pointerId, valid: false, touch }; dragMarks(e); }
+    drag = { g, t: g, id: e.pointerId, valid: false, touch, sx: e.clientX, sy: e.clientY, p0: p }; dragMarks(e); }
   else if (mode === 'shape') drag = { x: e.clientX, y: e.clientY, moved: 0, id: e.pointerId, e };
   else if (mode === 'aim') aimDown(e); else if (mode === 'fly') stickDown(e);
 });
@@ -500,7 +504,8 @@ canvas.addEventListener('pointermove', e => {
 });
 function pointerUp(e) {
   pts.delete(e.pointerId); panM = null; if (pts.size < 2) pinch = null;
-  if (mode === 'fold' && drag) { if (drag.id !== e.pointerId) return; if (drag.valid) commitFold(drag.g, drag.t); else if (Math.hypot(drag.t[0] - drag.g[0], drag.t[1] - drag.g[1]) > 0.06) toast('이 방향으로는 접을 수 없어요. 종이 안쪽으로 끌어 보세요', 1800); drag = null; refresh(); }
+  if (mode === 'fold' && drag) { if (drag.id !== e.pointerId) return; const k0 = ops.length, tap = Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 10; if (tap && tapFold(drag.p0)) { drag = null; return; }
+    if (drag.valid) { commitFold(drag.g, drag.t); if (ops.length > k0 + 1) { drag = null; refresh(); animFrom(k0 + 1); return; } } else if (Math.hypot(drag.t[0] - drag.g[0], drag.t[1] - drag.g[1]) > 0.06) toast('이 방향으로는 접을 수 없어요. 종이 안쪽으로 끌어 보세요', 1800); drag = null; refresh(); }
   else if (mode === 'shape' && drag) { if (drag.moved < 8) { const { ray } = planePoint(e), hit = ray.intersectObject(meshF)[0] || ray.intersectObject(meshB)[0];
       if (hit) { const f = cur.faces[triMap[hit.faceIndex]], q = paperG.worldToLocal(hit.point.clone()).applyMatrix4(f.Q.clone().invert()); grip = ap(inv(f.m), [q.x, q.y]); showStats(); toast('여기를 잡고 던집니다'); } } drag = null; }
   else if (mode === 'aim') aimUp(e); else if (mode === 'fly') stickUp(e);
@@ -522,16 +527,39 @@ function commitFold(g, t) {
   if (Math.abs(x0 + x1) < 0.03) { if (build(ops.concat([b])).ok) ops.push(b); else return; } else if (foldMode === 'flap' && build(ops.concat([f(), b])).ok) ops.push(f(), b, f()); else return;
   toast('반대쪽도 같이 접었어요', 1500);
 }
-function guideMarks() { const st = guide && mode === 'fold' && !replay ? guide.steps[guide.i] : null, on = !!(st && !st.flip); gBar.visible = gFrom.visible = gTo.visible = gHand.visible = on; if (on) { gFrom.position.set(st.g[0], st.g[1], 0.1); gTo.position.set(st.t[0], st.t[1], 0.1); bar(gBar, st.g, st.t, 0.016, 0.095); }
-  $('bFlip').classList.toggle('pulse', !!(st && st.flip)); $('bGuideStop').hidden = !guide; $('bGuideDart').hidden = $('bGuideGlider').hidden = !!guide; handles.visible = !replay && !guide; }
-function guideShow() { const st = guide.steps[guide.i], n = guide.steps.length; $('foldHint').textContent = '따라 접기 ' + (guide.i + 1) + '/' + n + ': ' + (st.flip ? '뒤집기 버튼을 누르세요' : '노란 점을 잡고 빨간 고리까지 끄세요'); foldMode = st.mode || foldMode; refresh(); setCam(); }
+/* ---- suggested folds: the next sensible steps for the sheet as it is now, one tap each ---- */
+const SCOL = [0x2456d6, 0x18a595, 0xb04ad6], sMarks = []; let suggs = [];
+for (let i = 0; i < 6; i++) { const c = SCOL[i >> 1], b = new T.Mesh(new T.PlaneGeometry(1, 1), new T.MeshBasicMaterial({ color: c, depthTest: false, transparent: true, opacity: 0.55 })), d = new T.Group(), d0 = new T.Mesh(new T.CircleGeometry(0.04, 24), new T.MeshBasicMaterial({ color: 0xffffff, depthTest: false })), d1 = new T.Mesh(new T.CircleGeometry(0.03, 24), new T.MeshBasicMaterial({ color: c, depthTest: false })); b.renderOrder = 6; d0.renderOrder = 7; d1.renderOrder = 8; d.add(d0, d1); b.visible = d.visible = false; paperG.add(b, d); sMarks.push({ b, d }); }
+function suggest() { if (guide || !cur || !cur.faces || !cur.ok) return [];
+  const pts = []; let yN = -9, x0 = 9, x1 = -9, y0 = 9, y1 = -9;
+  for (const fc of cur.faces) { const q = fc.sp.map(v => ap(fc.m, v)); q.forEach((a, i) => { pts.push(a); x0 = Math.min(x0, a[0]); x1 = Math.max(x1, a[0]); y0 = Math.min(y0, a[1]); y1 = Math.max(y1, a[1]); const b = q[(i + 1) % q.length]; if (Math.abs(a[0]) < 1e-6) yN = Math.max(yN, a[1]); else if (a[0] * b[0] < 0) yN = Math.max(yN, a[1] + (b[1] - a[1]) * -a[0] / (b[0] - a[0])); }); }
+  const out = [], ok = l => build(ops.concat(l)).ok, mk = (g, t, mode, angle) => ({ g, t, mode, angle: angle || 180 }), folds = ops.filter(o => !o.flip); if (folds.some(o => o.angle < 180) || folds.length > 9) return [];
+  if (Math.abs(x0 + x1) < 0.03) { let P = null; for (const a of pts) if (a[0] < -0.08 && (!P || a[1] > P[1] + 1e-4 || (Math.abs(a[1] - P[1]) < 1e-4 && a[0] < P[0]))) P = a;
+    if (P) { const d = Math.hypot(P[0], yN - P[1]), a = mk([P[0], P[1]], [0, yN - d], 'all'), b = mk([-P[0], P[1]], [0, yN - d], 'all'); if (d > 0.25 && yN - d > y0 - 0.02 && ok([a, b])) out.push({ label: '양쪽 모서리를 가운데로', ops: [a, b] });
+      if (yN - P[1] > 0.2 && !folds.some(o => Math.abs(o.g[0]) < 1e-6)) { const c = mk([0, yN], [0, P[1]], 'all'); if (ok([c])) out.push({ label: '코를 아래로 접기', ops: [c] }); } }
+    if (folds.length) { const y = y0 + 0.2 * (y1 - y0), c = mk([x0 * 0.6, y], [x1 * 0.6, y], 'all'); if (ok([c])) out.push({ label: '반으로 접기', ops: [c] }); } }
+  else { const sg = x1 > -x0 ? 1 : -1, w = Math.max(x1, -x0), y = y0 + 0.2 * (y1 - y0); for (const [k, label] of [[0.2, '날개 접기'], [0.14, '날개 넓게 접기']]) { const gx = 0.8 * w, tx = 2 * k * w - gx, l = [mk([sg * gx, y], [sg * tx, y], 'flap', 90), { flip: true }, mk([-sg * gx, y], [-sg * tx, y], 'flap', 90)]; if (ok(l)) out.push({ label, ops: l }); } }
+  return out.slice(0, 3); }
+function applySugg(i) { const sgn = suggs[i]; if (!sgn || replay) return; const k0 = ops.length, grp = ++grpId; if (!k0) origin = 'self'; sgn.ops.forEach(o => ops.push(Object.assign({}, o, { grp }))); sfx('fold'); refresh(); animFrom(k0); }
+function animFrom(k0) { if (k0 >= ops.length) return; replay = { k: k0 + 1, t: 0, fast: true }; guideMarks(); crease.visible = snapDot.visible = rubber.visible = grabDot.visible = false; }
+function tapFold(p) { const near = (a, r) => Math.hypot(a[0] - p[0], a[1] - p[1]) < r;
+  if (guide) { const st = guide.steps[guide.i]; if (st.flip || !(near(st.g, 0.15) || near(st.t, 0.15))) return false; const k0 = ops.length; commitFold(st.g, st.t); animFrom(k0); return true; }
+  let best = -1, bd = 0.14; suggs.forEach((sgn, i) => sgn.ops.slice(0, 2).forEach(o => { if (!o.flip) { const d = Math.hypot(o.g[0] - p[0], o.g[1] - p[1]); if (d < bd) { bd = d; best = i; } } })); if (best < 0) return false; applySugg(best); return true; }
+function suggUI() { suggs = mode === 'fold' && !replay ? suggest() : []; const host = $('sugg'), winged = ops.some(o => !o.flip && o.angle < 180);
+  sMarks.forEach((m, j) => { const sgn = suggs[j >> 1], o = sgn && sgn.ops[j % 2], on = !!(o && !o.flip); m.b.visible = m.d.visible = on; if (on) { m.d.position.set(o.g[0], o.g[1], 0.09); bar(m.b, o.g, o.t, 0.012, 0.085); } });
+  host.hidden = !suggs.length; if (suggs.length) { host.innerHTML = '<span class="lab">추천 접기</span>'; suggs.forEach((sgn, i) => { const b = document.createElement('button'); b.type = 'button'; b.innerHTML = '<i style="background:#' + SCOL[i].toString(16).padStart(6, '0') + '"></i><span>' + sgn.label + '</span>'; b.onclick = () => applySugg(i); host.appendChild(b); }); }
+  if (!guide && mode === 'fold') $('foldHint').textContent = winged ? '날개까지 접었어요! “다음: 모양 잡기”를 눌러 주세요.' : HINT0; if (mode === 'fold' && !$('foldUI').classList.contains('more')) { const hh = $('foldUI').offsetHeight; if (hh !== suggUI.h) { suggUI.h = hh; setCam(); } } }
+function guideMarks() { suggUI(); const st = guide && mode === 'fold' && !replay ? guide.steps[guide.i] : null, on = !!(st && !st.flip); gBar.visible = gFrom.visible = gTo.visible = gHand.visible = on; if (on) { gFrom.position.set(st.g[0], st.g[1], 0.1); gTo.position.set(st.t[0], st.t[1], 0.1); bar(gBar, st.g, st.t, 0.016, 0.095); }
+  $('bFlip').classList.toggle('pulse', !!(st && st.flip)); $('bGuideStop').hidden = !guide; $('bGuideDart').hidden = $('bGuideGlider').hidden = !!guide || ops.length > 0; handles.visible = !replay && !guide; }
+function guideShow() { const st = guide.steps[guide.i], n = guide.steps.length; $('foldHint').textContent = '따라 접기 ' + (guide.i + 1) + '/' + n + ': ' + (st.flip ? '뒤집기 버튼을 누르세요' : '노란 점을 톡 누르거나 빨간 고리까지 끄세요'); foldMode = st.mode || foldMode; refresh(); setCam(); }
 function guideStart(name) { ops = []; creases = []; grip = null; fwdRot = 0; upFlip = false; replay = null; origin = 'preset'; setBend(name === 'dart' ? 70 : 25); guide = { steps: PRESET[name](), i: 0 }; $('foldUI').classList.remove('min'); guideShow(); }
 function guideEnd(done) { guide = null; foldMode = 'flap'; $('bMode').textContent = '겹: 잡은 겹만'; $('bMode').classList.remove('on'); $('foldHint').textContent = HINT0; try { localStorage.setItem('paper-plane-guided', '1'); } catch (e) {} refresh(); setCam();
   if (done) { award(['guide']); toast('완성! 이제 “다음: 모양 잡기”를 눌러 보세요', 3600); sfx('record'); $('bToShape').classList.add('pulse'); setTimeout(() => $('bToShape').classList.remove('pulse'), 6000); } }
 function guideNext() { if (++guide.i >= guide.steps.length) guideEnd(true); else guideShow(); }
 function replayStart() { if (!ops.some(o => !o.flip)) return toast('먼저 종이를 한 번 이상 접어 주세요'); replay = { k: 1, t: 0 }; guideMarks(); crease.visible = snapDot.visible = rubber.visible = grabDot.visible = false; sfx('fold'); }
-function replayStep(dt) { const op = ops[replay.k - 1]; replay.t += dt / (op.flip ? 0.4 : 0.75); const u = Math.min(1, replay.t), e = u * u * (3 - 2 * u); showPaper(build(ops.slice(0, replay.k), op.flip ? 180 : e * 180));
-  if (u >= 1) { replay.k++; replay.t = -0.25; if (replay.k > ops.length) { replay = null; refresh(); } else sfx('fold'); } }
+function replayStep(dt) { const op = ops[replay.k - 1]; replay.t += dt / ((op.flip ? 0.4 : 0.75) * (replay.fast ? 0.45 : 1)); const u = Math.min(1, replay.t), e = u * u * (3 - 2 * u); showPaper(build(ops.slice(0, replay.k), op.flip ? 180 : e * (op.angle || 180)));
+  if (u >= 1) { replay.k++; replay.t = replay.fast ? 0 : -0.25; if (replay.k > ops.length) { replay = null; refresh(); } else if (!replay.fast) sfx('fold'); } }
+$('bMore').onclick = e => { const on = $('foldUI').classList.toggle('more'); e.target.textContent = on ? '간단히' : '더보기'; e.target.setAttribute('aria-expanded', on); };
 $('bGuideDart').onclick = () => guideStart('dart'); $('bGuideGlider').onclick = () => guideStart('glider'); $('bGuideStop').onclick = () => guideEnd(false); $('bReplay').onclick = replayStart;
 $('bSym').onclick = e => { sym = !sym; e.target.textContent = sym ? '대칭 접기 켬' : '대칭 접기 끔'; e.target.classList.toggle('on', sym); };
 $('bUndo').onclick = () => { if (guide) { if (guide.i > 0) { ops.pop(); guide.i--; guideShow(); } return; } popGroup(); refresh(); };
@@ -1059,7 +1087,7 @@ function frame(t) {
 }
 function resize() { const w = canvas.clientWidth, h = canvas.clientHeight; renderer.setSize(w, h, false); camB.aspect = w / h; camB.fov = w < h ? 78 : 62; camB.updateProjectionMatrix(); setCam(); }
 addEventListener('resize', resize);
-window.__pp = { force: null, mood: null, planeCode, planeFromCode, importCode, award, achGot, get hoops() { return hoops; }, get pads() { return pads; }, get path() { return path; }, get marks() { return fmarks; }, get guide() { return guide; }, get replay() { return replay; }, guideStart, replayStart, commitFold, set sym(v) { sym = v; }, planeG, camB, setGrip(g) { grip = g; refresh(); }, setLang, L, get lang() { return lang; }, AU, sparks, knock, ring, spark, popUp, get quality() { return quality; }, hangar, control, W0, paper, applyPaper, vo, ctl, dodge, get calls() { return renderer.info.render.calls; }, get trail() { return trail; }, get events() { return events; }, get ops() { return ops; }, set ops(v) { ops = v; refresh(); }, get aero() { return aero; }, Fl, launch, build, analyze, setMode, PRESET, get cur() { return cur; }, get mode() { return mode; }, physics };
+window.__pp = { force: null, paperG, camA, get suggs() { return suggs; }, applySugg, tapFold, mood: null, planeCode, planeFromCode, importCode, award, achGot, get hoops() { return hoops; }, get pads() { return pads; }, get path() { return path; }, get marks() { return fmarks; }, get guide() { return guide; }, get replay() { return replay; }, guideStart, replayStart, commitFold, set sym(v) { sym = v; }, planeG, camB, setGrip(g) { grip = g; refresh(); }, setLang, L, get lang() { return lang; }, AU, sparks, knock, ring, spark, popUp, get quality() { return quality; }, hangar, control, W0, paper, applyPaper, vo, ctl, dodge, get calls() { return renderer.info.render.calls; }, get trail() { return trail; }, get events() { return events; }, get ops() { return ops; }, set ops(v) { ops = v; refresh(); }, get aero() { return aero; }, Fl, launch, build, analyze, setMode, PRESET, get cur() { return cur; }, get mode() { return mode; }, physics };
 /* ---- language: Korean source text is translated on its way to the screen, so every label, toast and readout switches at once ---- */
 const I18N = {
   '1 접기': '1 Fold', '2 모양 잡기': '2 Shape', '3 날리기': '3 Fly', '게임 화면': 'Game view',
@@ -1105,7 +1133,8 @@ const I18N = {
   '날리기: 아래로 당겼다가 위로 밀어 던지고, 끌어서 조종합니다.': 'Fly: pull down and flick up to throw, then drag to steer.',
   '혼자 접기': 'Fold freely', '따라 접기: 다트': 'Guide: dart', '따라 접기: 글라이더': 'Guide: glider', '대칭 접기 켬': 'Mirror on', '대칭 접기 끔': 'Mirror off', '접는 과정 보기': 'Replay folds',
   '먼저 뒤집기 버튼을 눌러 주세요': 'Press “Flip over” first', '노란 점에서 빨간 고리까지 끌어 보세요': 'Drag from the yellow dot to the red ring', '지금은 접을 차례예요': 'Fold first, then flip', '반대쪽도 같이 접었어요': 'Mirrored on the other side',
-  '완성! 이제 “다음: 모양 잡기”를 눌러 보세요': 'Done! Now press “Next: shape”', '뒤집기 버튼을 누르세요': 'press “Flip over”', '노란 점을 잡고 빨간 고리까지 끄세요': 'grab the yellow dot and drag it to the red ring',
+  '완성! 이제 “다음: 모양 잡기”를 눌러 보세요': 'Done! Now press “Next: shape”', '뒤집기 버튼을 누르세요': 'press “Flip over”', '노란 점을 톡 누르거나 빨간 고리까지 끄세요': 'tap the yellow dot, or drag it to the red ring', '더보기': 'More', '간단히': 'Less', '추천 접기': 'Suggested', '양쪽 모서리를 가운데로': 'Both corners to the centre', '코를 아래로 접기': 'Fold the nose down', '반으로 접기': 'Fold in half', '날개 접기': 'Fold the wings', '날개 넓게 접기': 'Fold wide wings',
+  '날개까지 접었어요! “다음: 모양 잡기”를 눌러 주세요.': 'Wings are done! Press “Next: shape”.', '추천 접기를 누르거나, 종이를 직접 끌어 접으세요.': 'Tap a suggested fold, or drag the paper to fold it yourself.',
   '공유': 'Share', '지금 비행기 코드 복사': 'Copy code for this plane', '링크 복사': 'Copy link', '코드로 불러오기': 'Load from code', '공유 비행기': 'Shared plane', '공유 코드를 복사했어요': 'Share code copied', '공유 링크를 복사했어요': 'Share link copied', '자동 복사가 막혀 있어요. 아래 칸의 내용을 직접 복사해 주세요': 'Copying is blocked here. Copy the text from the box below', '코드를 읽을 수 없어요. 처음부터 끝까지 복사했는지 확인해 주세요': 'That code could not be read. Check that you copied all of it', '도전 과제 달성': 'Challenge complete', '고리': 'Hoop', '충돌': 'Hit', '첫 비행': 'First flight', '비행기를 한 번 날려 보기': 'Throw a plane once', '모범생': 'Good student', '따라 접기를 끝까지 완성하기': 'Finish a folding guide', '동네 한 바퀴': 'Around the block', '50 m 날리기': 'Fly 50 m', '백 미터 클럽': '100 m club', '100 m 날리기': 'Fly 100 m', '장거리 선수': 'Long hauler', '200 m 날리기': 'Fly 200 m', '바람의 전설': 'Legend of the wind', '400 m 날리기': 'Fly 400 m', '여유로운 활공': 'Easy glide', '15초 동안 떠 있기': 'Stay up for 15 s', '구름 산책': 'Cloud walk', '30초 동안 떠 있기': 'Stay up for 30 s', '높이 더 높이': 'Higher and higher', '높이 20 m까지 오르기': 'Reach 20 m of height', '무사고 비행': 'Clean flight', '방해꾼에게 맞지 않고 150 m 날리기': 'Fly 150 m without being hit', '고리 사냥꾼': 'Hoop hunter', '한 번의 비행에서 고리 3개 통과': '3 hoops in one flight', '곡예 비행사': 'Stunt pilot', '한 번의 비행에서 고리 8개 통과': '8 hoops in one flight', '열기류 서퍼': 'Thermal surfer', '한 번의 비행에서 상승기류 3번 타기': 'Ride 3 thermals in one flight', '우주 친구': 'Friend from space', '외계인의 도움 받기': 'Get a lift from the alien', '정밀 착륙': 'Spot landing', '과녁 위에 착륙하기': 'Land on a target', '나만의 설계': 'My own design', '예시 없이 직접 접은 비행기로 60 m 날리기': 'Fly 60 m with a plane you folded yourself',
   '받은 코드 붙여넣기': 'Paste a code here', '공유 코드': 'Share code', '비행 궤적': 'Flight path', '도전 과제': 'Challenges',
   '최고 기록 돌파!': 'New best!', '플레이어': 'Player', '비행기': 'Plane', '각도': 'angle', '평평': 'Flat'
