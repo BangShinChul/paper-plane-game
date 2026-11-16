@@ -528,8 +528,9 @@ function pointerUp(e) {
   else if (mode === 'shape' && drag) { if (drag.moved < 8) { const { ray } = planePoint(e), hit = ray.intersectObject(meshF)[0] || ray.intersectObject(meshB)[0];
       if (hit) { const f = cur.faces[triMap[hit.faceIndex]], q = paperG.worldToLocal(hit.point.clone()).applyMatrix4(f.Q.clone().invert()); grip = ap(inv(f.m), [q.x, q.y]); showStats(); toast('여기를 잡고 던집니다'); } } drag = null; }
   else if (mode === 'aim') aimUp(e); else if (mode === 'fly') stickUp(e);
+  if (e.pointerId === ctl.id && mode !== 'fly') stickReset();
 }
-canvas.addEventListener('pointerup', pointerUp); canvas.addEventListener('pointercancel', pointerUp);
+canvas.addEventListener('pointerup', pointerUp); canvas.addEventListener('pointercancel', pointerUp); canvas.addEventListener('lostpointercapture', e => { if (e.pointerId === ctl.id) stickReset(); });
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 canvas.addEventListener('wheel', e => { if (mode === 'fold') { e.preventDefault(); vo.z = clamp(vo.z * (1 + Math.sign(e.deltaY) * 0.08), 0.4, 2.2); setCam(); } else if (mode === 'shape') { e.preventDefault(); orbit.d = clamp(orbit.d * (1 + Math.sign(e.deltaY) * 0.08), 1.2, 6); setCam(); } }, { passive: false });
 /* ---- folding helpers: mirrored folds, a follow-along guide, and a replay of the folding steps ---- */
@@ -608,7 +609,7 @@ $('bDart').onclick = () => { if (guide) guideEnd(false); origin = 'preset'; pape
 $('bGlider').onclick = () => { if (guide) guideEnd(false); origin = 'preset'; paper.shape = 'sq'; applyPaper(); ops = PRESET.glider(); creases = []; grip = null; setBend(15); refresh(); toast('글라이더를 접었어요', 2000); };
 function setMode(m) {
   mode = m; $('title').hidden = m !== 'title'; $('steps').hidden = m === 'title'; if (m === 'title') titleShow();
-  $('foldUI').hidden = m !== 'fold'; $('shapeUI').hidden = m !== 'shape'; $('hud').hidden = m !== 'fly' && m !== 'aim'; $('aim').hidden = m !== 'aim'; $('steer').hidden = m !== 'fly'; $('alt').hidden = m !== 'fly'; $('vig').hidden = m !== 'fly' && m !== 'aim' && m !== 'title'; $('bDash').hidden = m !== 'fly'; $('bPause').hidden = m !== 'fly'; if (m !== 'fly' && paused) setPause(false, true); $('wind').hidden = m !== 'fly' && m !== 'aim'; if (m !== 'fly') $('stick').hidden = true; $('result').hidden = m !== 'result'; $('banner').hidden = true;
+  $('foldUI').hidden = m !== 'fold'; $('shapeUI').hidden = m !== 'shape'; $('hud').hidden = m !== 'fly' && m !== 'aim'; $('aim').hidden = m !== 'aim'; $('steer').hidden = m !== 'fly'; $('alt').hidden = m !== 'fly'; $('vig').hidden = m !== 'fly' && m !== 'aim' && m !== 'title'; $('bDash').hidden = m !== 'fly'; $('bPause').hidden = m !== 'fly'; stickReset(); if (m !== 'fly' && paused) setPause(false, true); $('wind').hidden = m !== 'fly' && m !== 'aim'; if (m !== 'fly') $('stick').hidden = true; $('result').hidden = m !== 'result'; $('banner').hidden = true;
   document.querySelectorAll('#steps span').forEach(s => s.classList.toggle('on', s.dataset.s === (m === 'aim' || m === 'result' ? 'fly' : m)));
   if (m !== 'fold') { $('stylePop').hidden = true; replay = null; } if (m !== 'fold' && m !== 'shape') $('hangarPop').hidden = true;
   if (m === 'fold' || m === 'shape') { refresh(); setCam(); }
@@ -804,7 +805,7 @@ function popUp(txt, big) { const e = $('pop'); e.textContent = txt; e.className 
 const Fl = {}; let flyT = 0, events = [], nextEvt = 0, keyL = false, keyR = false, keyU = false, keyD = false, wind = V3(0, 0, 0), gustT = 0, best = 0;
 function resetFlight() {
   clearExtras(); { const r = Math.random(); setMood(window.__pp.mood || (r < 0.6 ? 'day' : r < 0.85 ? 'sunset' : 'gray')); }
-  buildPlane(); newWind(); ctl.cd = ctl.dash = ctl.spin = ctl.u = ctl.v = 0; Object.assign(Fl, { inv: 0, bias: 0, sk: 1, smoke: 0, wet: 0, abduct: 0, poops: 0, inRain: false, lv: 0, hits: 0, hoops: 0, therm: 0, ufo: 0, inTh: false, status: new Map(), x: 0.6, y: H0 + 1.45, z: 0, V: 0, gam: 0, psi: 0, th: 0, q: 0, phi: 0, pr: 0, t: 0, maxY: 0, flying: false, mass: aero.mass, sm: aero.sm, Cd0: aero.Cd0, pull: 0 });
+  buildPlane(); newWind(); stickReset(); keyL = keyR = keyU = keyD = false; ctl.cd = ctl.dash = ctl.spin = ctl.u = ctl.v = 0; Object.assign(Fl, { inv: 0, bias: 0, sk: 1, smoke: 0, wet: 0, abduct: 0, poops: 0, inRain: false, lv: 0, hits: 0, hoops: 0, therm: 0, ufo: 0, inTh: false, status: new Map(), x: 0.6, y: H0 + 1.45, z: 0, V: 0, gam: 0, psi: 0, th: 0, q: 0, phi: 0, pr: 0, t: 0, maxY: 0, flying: false, mass: aero.mass, sm: aero.sm, Cd0: aero.Cd0, pull: 0 });
   events.forEach(e => sceneB.remove(e.g)); events = []; sparks.length = 0; trails.forEach(t => { t.pts.length = 0; }); mile = 0; record = (board()[0] || { d: 0 }).d; recordHit = false; pB.material.color.set(0xffffff); $('splat').innerHTML = ''; nextEvt = rnd(32, 48); wind.set(0, 0, 0); gustT = 0; updateChunks(0); hand.visible = true; $('dist').textContent = '0.0 m'; $('sub').textContent = '';
 }
 function physics(dt) {
@@ -913,7 +914,8 @@ function launch(power, yaw) {
 }
 // steering: drag anywhere (or WASD / arrows) to slide and climb; the dodge button (Space) is a quick roll with a moment of safety
 const ctl = { u: 0, v: 0, su: 0, sv: 0, id: -1, ox: 0, oy: 0, cd: 0, dash: 0, du: 0, dv: 0, spin: 0 };
-function stickDown(e) { if (ctl.id >= 0) return; ctl.id = e.pointerId; ctl.ox = e.clientX; ctl.oy = e.clientY; ctl.su = ctl.sv = 0; const st = $('stick'); st.hidden = false; st.style.left = e.clientX + 'px'; st.style.top = e.clientY + 'px'; st.firstElementChild.style.transform = ''; }
+function stickReset() { ctl.id = -1; ctl.su = ctl.sv = 0; $('stick').hidden = true; }
+function stickDown(e) { ctl.id = e.pointerId; ctl.ox = e.clientX; ctl.oy = e.clientY; ctl.su = ctl.sv = 0; const st = $('stick'); st.hidden = false; st.style.left = e.clientX + 'px'; st.style.top = e.clientY + 'px'; st.firstElementChild.style.transform = ''; }
 function stickMove(e) { if (e.pointerId !== ctl.id) return; let dx = (e.clientX - ctl.ox) / 52, dy = (e.clientY - ctl.oy) / 52; const l = Math.hypot(dx, dy); if (l > 1) { dx /= l; dy /= l; } ctl.su = dx; ctl.sv = -dy; $('stick').firstElementChild.style.transform = 'translate(' + dx * 37 + 'px,' + dy * 37 + 'px)'; }
 function stickUp(e) { if (e.pointerId !== ctl.id) return; ctl.id = -1; ctl.su = ctl.sv = 0; $('stick').hidden = true; }
 function dodge() {
