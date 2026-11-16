@@ -18,6 +18,15 @@ body { background: #cfe0f7; color: var(--ink); font-family: var(--text); overflo
 .gut { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 #steps { position: absolute; top: 8px; left: 0; right: 0; display: flex; gap: 6px; justify-content: center; pointer-events: none; font: 700 18px var(--hand); }
 #bLang { position: absolute; top: 6px; right: max(8px, env(safe-area-inset-right, 0px)); z-index: 6; padding: 4px 8px; font: 700 12px var(--text); box-shadow: 1px 1px 0 var(--ink); min-width: 38px; }
+#title { position: absolute; inset: 0; display: flex; align-items: flex-end; justify-content: center; pointer-events: none; background: linear-gradient(180deg, rgba(23,38,77,0) 30%, rgba(23,38,77,.5) 100%); overflow-y: auto; }
+.tbox { pointer-events: auto; text-align: center; width: 100%; max-width: 560px; box-sizing: border-box; padding-block: 24px 30px; }
+#title h1 { margin: 0; font: 700 clamp(46px, 13vw, 84px)/0.98 var(--hand); color: #fff; text-shadow: 0 4px 0 var(--ink), 0 0 26px rgba(23,38,77,.55); transform: rotate(-3deg); text-wrap: balance; }
+#title h1 span { display: block; } #title h1 span:last-child { color: var(--mark); }
+.tsub { margin: 14px 0 0; font: 600 15px var(--text); color: #fff; text-shadow: 0 1px 4px var(--ink); }
+.tbest { display: inline-block; margin: 12px 0 0; background: var(--paper); border: 1.5px solid var(--ink); padding: 3px 12px; font: 600 14px var(--text); font-variant-numeric: tabular-nums; }
+.tbtns { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 18px; } .tbtns button { padding: 10px 14px; font-size: 14px; }
+#bStart { flex: 1 1 100%; max-width: 320px; font: 700 26px var(--hand); padding: 10px 20px; background: var(--mark); color: var(--ink); }
+#how { text-align: left; background: var(--paper); border: 2px solid var(--ink); margin: 14px auto 0; padding: 10px 14px 10px 34px; max-width: 460px; box-sizing: border-box; font-size: 14px; line-height: 1.6; } #how li + li { margin-top: 4px; }
 #steps span { background: var(--paper); border: 1.5px solid var(--rule); padding: 1px 10px; color: var(--dim); }
 #steps span.on { background: var(--mark); border-color: var(--ink); color: var(--ink); }
 .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--paper); border-top: 2px solid var(--ink); padding-block: 10px;
@@ -100,6 +109,25 @@ button.pri { background: var(--blue); color: #fff; } button.on { background: var
   <button id="bLang" type="button" data-raw>EN</button>
   <div id="steps"><span data-s="fold" class="on">1 접기</span><span data-s="shape">2 모양 잡기</span><span data-s="fly">3 날리기</span></div>
 
+  <div id="title" hidden>
+    <div class="tbox gut">
+      <h1><span>종이비행기</span><span>멀리 날리기</span></h1>
+      <p class="tsub">접고, 다듬고, 던져서 가장 멀리</p>
+      <p class="tbest" id="tBest" hidden></p>
+      <div class="tbtns">
+        <button id="bStart" type="button" class="pri">시작하기</button>
+        <button id="bTitleHangar" type="button">보관함에서 불러오기</button>
+        <button id="bHow" type="button" aria-expanded="false">어떻게 하나요?</button>
+        <button class="bSound" type="button">소리 켬</button>
+      </div>
+      <ol id="how" hidden>
+        <li>접기: 종이를 잡고 끌어 접습니다. 예시 접기로 시작해도 좋아요.</li>
+        <li>모양 잡기: 날개를 세우고 뒤끝을 맞춥니다. 안정성 문구를 참고하세요.</li>
+        <li>날리기: 아래로 당겼다가 위로 밀어 던지고, 끌어서 조종합니다.</li>
+      </ol>
+    </div>
+  </div>
+
   <div class="sheet gut" id="foldUI">
     <button id="bMin" class="tog" type="button" aria-expanded="true">안내판 접기 ▾</button>
     <p class="hint" id="foldHint">모서리나 종이 위를 잡고 끌면 접힙니다. 두 손가락으로 끌면 종이가 움직이고, 벌리면 확대됩니다.</p>
@@ -113,6 +141,7 @@ button.pri { background: var(--blue); color: #fff; } button.on { background: var
       <button id="bStyle" type="button">종이 꾸미기</button>
       <button id="bRandom" type="button">랜덤 종이</button>
       <button id="bFit" type="button">화면 맞춤</button>
+      <button id="bHome" type="button">처음 화면</button>
       <button class="bSound" type="button">소리 켬</button>
       <button id="bReset" type="button">새 종이</button>
       <button id="bDart" type="button">예시: 다트</button>
@@ -183,7 +212,7 @@ button.pri { background: var(--blue); color: #fff; } button.on { background: var
       <div id="nameRow"><input id="pname" maxlength="12" value="플레이어" aria-label="이름"><button id="bSave" type="button" class="pri">기록 저장</button></div>
       <ol id="lb"></ol>
       <p class="dim">기록은 이 브라우저에만 저장됩니다.</p>
-      <div class="btns"><button id="bAgain" type="button" class="pri">같은 비행기로 다시</button><button id="bNew" type="button">다시 접기</button></div>
+      <div class="btns"><button id="bAgain" type="button" class="pri">같은 비행기로 다시</button><button id="bNew" type="button">다시 접기</button><button id="bHome2" type="button">처음 화면</button></div>
     </div>
   </div>
 </div>
@@ -480,7 +509,8 @@ const PRESET = {
 $('bDart').onclick = () => { ops = PRESET.dart(); creases = []; grip = null; setBend(70); refresh(); toast('다트를 접었어요. 되돌리기로 한 단계씩 볼 수 있어요', 2600); };
 $('bGlider').onclick = () => { ops = PRESET.glider(); creases = []; grip = null; setBend(25); refresh(); toast('글라이더를 접었어요', 2000); };
 function setMode(m) {
-  mode = m; $('foldUI').hidden = m !== 'fold'; $('shapeUI').hidden = m !== 'shape'; $('hud').hidden = m !== 'fly' && m !== 'aim'; $('aim').hidden = m !== 'aim'; $('steer').hidden = m !== 'fly'; $('alt').hidden = m !== 'fly'; $('vig').hidden = m !== 'fly' && m !== 'aim'; $('bDash').hidden = m !== 'fly'; $('wind').hidden = m !== 'fly' && m !== 'aim'; if (m !== 'fly') $('stick').hidden = true; $('result').hidden = m !== 'result'; $('banner').hidden = true;
+  mode = m; $('title').hidden = m !== 'title'; $('steps').hidden = m === 'title'; if (m === 'title') titleShow();
+  $('foldUI').hidden = m !== 'fold'; $('shapeUI').hidden = m !== 'shape'; $('hud').hidden = m !== 'fly' && m !== 'aim'; $('aim').hidden = m !== 'aim'; $('steer').hidden = m !== 'fly'; $('alt').hidden = m !== 'fly'; $('vig').hidden = m !== 'fly' && m !== 'aim' && m !== 'title'; $('bDash').hidden = m !== 'fly'; $('wind').hidden = m !== 'fly' && m !== 'aim'; if (m !== 'fly') $('stick').hidden = true; $('result').hidden = m !== 'result'; $('banner').hidden = true;
   document.querySelectorAll('#steps span').forEach(s => s.classList.toggle('on', s.dataset.s === (m === 'aim' || m === 'result' ? 'fly' : m)));
   if (m !== 'fold') $('stylePop').hidden = true; if (m !== 'fold' && m !== 'shape') $('hangarPop').hidden = true;
   if (m === 'fold' || m === 'shape') { refresh(); setCam(); }
@@ -883,9 +913,15 @@ function setSound(on) { AU.on = on; try { localStorage.setItem('paper-plane-soun
 
 /* ================= loop ================= */
 const camPos = V3(0, H0 + 1.6, 0), camLook = V3(10, H0 + 1.4, 0); let last = 0;
+// title screen: a demo glider drifts over the scenery behind the menu
+let titleT = 0, titleReady = false;
+function titleShow() { if (!titleReady) { titleReady = true; const keep = ops, kb = { ...bend }; ops = PRESET.glider(); bend.l = bend.r = 0.25; cur = build(ops); aero = analyze(cur.faces); buildPlane(); ops = keep; bend.l = kb.l; bend.r = kb.r; cur = build(ops, 180); }
+  hand.visible = false; Fl.flying = false; const b = board()[0], e = $('tBest'); e.hidden = !b; if (b) e.textContent = '내 최고 기록 ' + b.d.toFixed(1) + ' m'; updateChunks(Fl.x || 0); }
+function titleFly(dt) { titleT += dt; const t = titleT; Fl.x = 20 + t * 4.5; Fl.y = 15 + Math.sin(t * 0.5) * 1.6; Fl.z = Math.sin(t * 0.23) * 5; Fl.th = Math.cos(t * 0.5) * 0.09; Fl.psi = Math.cos(t * 0.23) * 0.14; Fl.phi = Math.cos(t * 0.23) * 0.3; placePlane(); updateChunks(Fl.x);
+  const a = t * 0.12; camB.position.set(Fl.x - 2.1 * Math.cos(a * 0.5 + 0.4), Fl.y + 0.35 + Math.sin(a) * 0.3, Fl.z + 1.7 * Math.sin(a * 0.5 + 0.9)); camB.lookAt(Fl.x + 0.8, Fl.y - (camB.aspect < 1 ? 1.15 : 0.55), Fl.z); } // look below the plane so it sits above the menu
 function flyFrame(dt) {
   flyT += dt; for (const a of anims) a.f(flyT);
-  if (mode === 'aim' || (mode === 'result' && !Fl.flying && Fl.t === 0)) {
+  if (mode === 'title') titleFly(dt); else if (mode === 'aim' || (mode === 'result' && !Fl.flying && Fl.t === 0)) {
     const ang = +$('ang').value * Math.PI / 180, p = Math.max(0, Fl.pull || 0); Fl.x = 0.74 - p * 0.26; Fl.y = H0 + 1.47 - p * 0.07; Fl.z = 0.08 + (Fl.aimX || 0) * 0.3; $('powFill').style.width = clamp(p, 0, 1) * 100 + '%'; Fl.th = ang + p * 0.2; Fl.psi = 0; Fl.phi = 0; placePlane();
     planeG.position.sub(gripB.clone().applyEuler(planeG.rotation)).add(V3(0, 0, 0)); hand.position.set(Fl.x, Fl.y, Fl.z); hand.rotation.set(0, 0, Fl.th * 0.6);
     camPos.set(0, H0 + 1.62, 0); camLook.set(10, H0 + 1.2, 0); camB.position.copy(camPos); camB.lookAt(camLook);
@@ -957,6 +993,10 @@ const I18N = {
   '외계인에게 끌려갔다가 내동댕이쳐졌다!': 'Abducted and thrown back!', '그을림 · 날개 구멍': 'Scorched · hole in wing',
   '뒤에서 영웅이 날아옵니다! 옆으로 비켜 주세요': 'A hero is coming from behind! Move aside', '영웅의 충격파에 빙글빙글 날아갔다!': "Blown away by the hero's shockwave!", '영웅이 옆을 스쳐 지나갔다': 'The hero shot past', '충격파': 'Shockwave',
   '먹구름! 비 기둥을 옆으로 돌아가세요': 'Storm cloud! Go around the rain', '번쩍! 번개에 맞았다': 'Flash! Struck by lightning', '번개에 그을림': 'Lightning scorch', '상승기류': 'Updraft',
+  '종이비행기': 'Paper Plane', '멀리 날리기': 'Long Flight', '접고, 다듬고, 던져서 가장 멀리': 'Fold it, tune it, throw it far', '내 최고 기록': 'Your best', '시작하기': 'Start', '보관함에서 불러오기': 'Load from hangar', '어떻게 하나요?': 'How to play', '처음 화면': 'Home',
+  '접기: 종이를 잡고 끌어 접습니다. 예시 접기로 시작해도 좋아요.': 'Fold: grab the paper and drag to fold. The examples are a good place to start.',
+  '모양 잡기: 날개를 세우고 뒤끝을 맞춥니다. 안정성 문구를 참고하세요.': 'Shape: open the wings and set the trim. Check the stability note.',
+  '날리기: 아래로 당겼다가 위로 밀어 던지고, 끌어서 조종합니다.': 'Fly: pull down and flick up to throw, then drag to steer.',
   '최고 기록 돌파!': 'New best!', '플레이어': 'Player', '비행기': 'Plane', '각도': 'angle', '평평': 'Flat'
 };
 const I18R = [
@@ -979,6 +1019,8 @@ new MutationObserver(ms => { for (const m of ms) { if (m.type === 'characterData
 $('bLang').onclick = () => setLang(lang === 'ko' ? 'en' : 'ko');
 document.querySelectorAll('.bSound').forEach(b => { b.textContent = AU.on ? '소리 켬' : '소리 끔'; b.onclick = () => setSound(!AU.on); });
 document.addEventListener('click', e => { const b = e.target.closest('button'); if (b && !b.classList.contains('bSound')) sfx('click'); });
-applyPaper(); setMode('fold'); resize(); setLang(lang); requestAnimationFrame(frame);
+$('bStart').onclick = () => setMode('fold'); $('bTitleHangar').onclick = () => { setMode('fold'); $('bHangar').click(); };
+$('bHow').onclick = e => { const h = $('how'); h.hidden = !h.hidden; e.currentTarget.setAttribute('aria-expanded', !h.hidden); }; $('bHome').onclick = $('bHome2').onclick = () => setMode('title');
+applyPaper(); setMode('title'); resize(); setLang(lang); requestAnimationFrame(frame);
 })();
 </script>
