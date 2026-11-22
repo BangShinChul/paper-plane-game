@@ -114,7 +114,9 @@ button.pri { background: var(--blue); color: #fff; } button.pulse { animation: p
 .card { box-sizing: border-box; background: var(--paper); border: 2px solid var(--ink); box-shadow: 6px 6px 0 var(--ink); padding: 20px; max-width: 460px; width: 100%; margin: auto; }
 .pop { box-sizing: border-box; }
 .card h2 { font: 700 34px/1.1 var(--hand); margin: 0 0 4px; text-wrap: balance; } .card .big { font: 700 64px/1 var(--hand); color: var(--blue); font-variant-numeric: tabular-nums; }
-.card p { margin: 6px 0; font-size: 14px; line-height: 1.6; } .card .dim { color: var(--dim); font-size: 13px; }
+.card p { margin: 6px 0; font-size: 14px; line-height: 1.6; } .trhelp { margin: 2px 0 6px; font-size: 11.5px; color: var(--dim); line-height: 1.35; }
+#rTune { margin: 6px 0; padding: 8px 10px; border: 1.5px solid var(--ink); border-radius: 3px; background: #fff; font-size: 13.5px; display: grid; gap: 6px; } #rTune > b { font-size: 14px; } #rTune ul { margin: 0; padding-left: 18px; } #rTune li { margin: 2px 0; } #rTune button { justify-self: start; }
+.card .dim { color: var(--dim); font-size: 13px; }
 #lb { list-style: none; margin: 10px 0; padding: 0; border-top: 1.5px solid var(--ink); } #lb li { display: grid; grid-template-columns: 26px 1fr auto auto; gap: 10px; padding: 5px 2px; border-bottom: 1px solid var(--rule); font-size: 14px; font-variant-numeric: tabular-nums; }
 #lb li.me { background: var(--mark); } #lb .t { color: var(--dim); }
 #nameRow { display: flex; gap: 6px; margin: 10px 0; } #nameRow input { flex: 1; min-width: 0; font: 600 15px var(--text); padding: 7px 9px; border: 1.5px solid var(--ink); border-radius: 3px; background: #fff; color: var(--ink); user-select: text; -webkit-user-select: text; }
@@ -205,14 +207,15 @@ button.pri { background: var(--blue); color: #fff; } button.pulse { animation: p
     <div class="cols">
       <div>
         <div id="angles"></div>
-        <div class="sl"><span>왼쪽 뒤끝 휘기</span><input id="bendL" type="range" min="-100" max="100" step="5" value="30" aria-label="왼쪽 날개 뒤끝 휘기"><b id="bendLV">위 30</b></div>
-        <div class="sl"><span>오른쪽 뒤끝 휘기</span><input id="bendR" type="range" min="-100" max="100" step="5" value="30" aria-label="오른쪽 날개 뒤끝 휘기"><b id="bendRV">위 30</b></div>
+        <div class="sl"><span>엘리베이터</span><input id="trE" type="range" min="-100" max="100" step="5" value="30" aria-label="엘리베이터: 양쪽 뒤끝을 함께 올리거나 내리기"><b id="trEV">위 30</b></div>
+        <div class="sl"><span>에일러론</span><input id="trA" type="range" min="-60" max="60" step="5" value="0" aria-label="에일러론: 한쪽 뒤끝은 올리고 다른 쪽은 내리기"><b id="trAV">가운데</b></div>
+        <p class="trhelp">엘리베이터: 양쪽 뒤끝을 함께 올리면 기수가 들려요. 에일러론: 한쪽은 올리고 한쪽은 내려 그쪽으로 돌게 해요.</p>
       </div>
       <div>
         <div id="stats"></div>
         <div class="btns" style="margin-top:8px">
           <button id="bWings" type="button">날개 자동 펴기</button>
-          <button id="bTrim" type="button">뒤끝 자동 맞춤</button>
+          <button id="bTrim" type="button">엘리베이터 자동 맞춤</button>
           <button id="bFwd" type="button">앞 방향 돌리기</button>
           <button id="bUp" type="button">위아래 바꾸기</button>
           <button id="bHangar2" type="button">보관함에 저장</button>
@@ -256,6 +259,7 @@ button.pri { background: var(--blue); color: #fff; } button.pulse { animation: p
       <p id="rInfo"></p>
       <canvas id="rPath" role="img" aria-label="비행 궤적"></canvas>
       <p class="dim" id="rLegend"><span style="color:#c98f00">●</span> <span>고리</span> <span style="color:#e2463f">●</span> <span>충돌</span> <span style="color:#18a595">●</span> <span>상승기류</span></p>
+      <div id="rTune" hidden></div>
       <div id="rAch"></div>
       <div id="nameRow"><input id="pname" maxlength="12" value="플레이어" aria-label="이름"><button id="bSave" type="button" class="pri">기록 저장</button></div>
       <ol id="lb"></ol>
@@ -488,7 +492,7 @@ function analyze(faces) {
   for (const f of bf) { const m = MASS * f.A / (PS * PS); Iyy += m * (f.c.x * f.c.x + f.c.z * f.c.z + 0.00004); Ixx += m * (f.c.y * f.c.y + f.c.z * f.c.z + 0.00004); block += f.A * Math.abs(f.n.x); { const zz = Math.abs(f.n.z), inc = Math.atan2(f.n.z > 0 ? f.n.x : -f.n.x, zz); if (zz > 0.5 && Math.abs(inc) > 0.03 && Math.abs(inc) < 0.7) { cmI += f.c.x * -inc * f.A * zz; clI += f.c.y * -inc * f.A * zz; } } // a tilted flap works as a control surface, not as wing
     const nz = Math.abs(f.n.z); if (nz > 0.3 && Math.abs(f.c.y) > 0.004) { const w = f.A * nz, ny = f.n.z > 0 ? f.n.y : -f.n.y; gam += w * Math.atan(-ny * Math.sign(f.c.y) / nz); gw += w; zwb += w * f.c.z; zws += w; } }
   const a = 2 * Math.PI * AR / (AR + 2) * 0.72, xnpK = 0.08 + 0.13 * clamp((AR - 1) / 3, 0, 1), xnp = top.cx + xnpK * c, sm = -xnp / c; // slender wings carry their lift further aft
-  const A = { S, b, c, len, AR, a, sm, Cd0: 0.03 + 1.1 * block / S + 0.012 * (Math.abs(bend.l) + Math.abs(bend.r)) / 2, cmInc: clamp(a * cmI / (S * c), -0.06, 0.06), Cm0: 0.006 + 0.05 * (bend.l + bend.r) / 2 + clamp(a * cmI / (S * c), -0.06, 0.06), roll: 0.04 * (bend.r - bend.l) + clamp(a * clI / (S * b) * 0.5, -0.05, 0.05), Iyy: Math.max(Iyy, 3e-6), Ixx: Math.max(Ixx, 3e-6), gam: gw ? gam / gw : 0, asym: (top.pos - top.neg) / S, cgy: top.cy / b,
+  const A = { S, b, c, len, AR, a, sm, Cd0: 0.03 + 1.1 * block / S + 0.012 * (Math.abs(bend.l) + Math.abs(bend.r)) / 2, cmInc: clamp(a * cmI / (S * c), -0.06, 0.06), Cm0: 0.006 + 0.05 * (bend.l + bend.r) / 2 + clamp(a * cmI / (S * c), -0.06, 0.06), ail: bend.r - bend.l, roll: clamp(a * clI / (S * b) * 0.5, -0.05, 0.05), Iyy: Math.max(Iyy, 3e-6), Ixx: Math.max(Ixx, 3e-6), gam: gw ? gam / gw : 0, asym: (top.pos - top.neg) / S, cgy: top.cy / b,
     yaw: side.area / S * (0.15 - side.cx / len), zw: zws ? zwb / zws : 0, mass: MASS * sheetArea(), C, X, Y, up, bf };
   { const xr = top.x0, zl = 0.3 * len; A.warp = p => { const d = p.clone().sub(C), x = d.dot(X) * PS, y = d.dot(Y) * PS; if (x > xr + zl || Math.abs(y) < 0.008) return p; const t = (xr + zl - x) / zl; return p.addScaledVector(up, (y > 0 ? bend.l : bend.r) * 0.1 * len * t * t / PS); }; }
   A.aStall = 0.24 + 0.1 * clamp(1.6 - AR, 0, 1); A.kPost = xnpK; // slender wings hold on a little longer; once stalled the lift sits near mid-chord
@@ -505,7 +509,7 @@ function showStats() {
   const A = aero, g = gripPoint(); gripDot.position.copy(g); cgDot.position.copy(A.C); arrow.position.copy(A.C).addScaledVector(A.up, 0.02); arrow.setDirection(A.X); arrow.setLength(Math.max(0.3, A.len / PS * 0.7), 0.09, 0.06);
   const st = A.sm < -A.kPost ? '<span class="bad">뒤가 너무 무거움 · 뒤집히며 떨어져요</span>' : A.sm < 0 ? '<span class="bad">뒤가 무거움 · 고개를 들다 실속해 뚝 떨어져요</span>' : A.sm < 0.03 ? '<span class="bad">아슬아슬 · 고개를 들다 실속하기 쉬워요</span>' : A.sm < 0.42 ? '<b>좋음</b>' : '<span class="bad">머리가 무거움 · 빨리 떨어져요</span>';
   const bal = Math.abs(A.asym) < 0.04 && Math.abs(A.cgy) < 0.02 ? '<b>좋음</b>' : '<span class="bad">한쪽으로 돌아요</span>';
-  $('stats').innerHTML = '날개 면적 <b>' + (A.S * 1e4).toFixed(0) + ' cm²</b> · 날개 폭 <b>' + (A.b * 100).toFixed(1) + ' cm</b><br>앞뒤 안정성 ' + st + (A.sm > 0.005 ? (A.Cm0 / (A.a * A.sm) > A.aStall ? '<br><span class="bad">뒤끝을 너무 올렸어요 · 고개를 들다 실속해 멀리 못 가요</span>' : A.Cm0 / (A.a * A.sm) < 0.07 ? '<br><span class="bad">뒤끝을 더 올리면 덜 내리꽂아요</span>' : '<br>뒤끝 휘기 <b>알맞음</b>') : '') + '<br>좌우 균형 ' + bal + (Math.abs(A.roll) > 0.012 ? ' · <span class="bad">' + (A.roll > 0 ? '오른쪽' : '왼쪽') + '으로 기울어요</span>' : '') + '<br>예상 활공비 <b>' + A.LD.toFixed(1) + '</b> · 순항 속도 <b>' + A.Vt.toFixed(1) + ' m/s</b><br><span style="color:var(--dim)">노란 점 무게중심 · 빨간 점 잡는 곳 · 파란 화살표 앞</span>';
+  $('stats').innerHTML = '날개 면적 <b>' + (A.S * 1e4).toFixed(0) + ' cm²</b> · 날개 폭 <b>' + (A.b * 100).toFixed(1) + ' cm</b><br>앞뒤 안정성 ' + st + (A.sm > 0.005 ? (A.Cm0 / (A.a * A.sm) > A.aStall ? '<br><span class="bad">엘리베이터를 너무 올렸어요 · 고개를 들다 실속해 멀리 못 가요</span>' : A.Cm0 / (A.a * A.sm) < 0.07 ? '<br><span class="bad">엘리베이터를 더 올리면 덜 내리꽂아요</span>' : '<br>엘리베이터 <b>알맞음</b>') : '') + '<br>좌우 균형 ' + bal + (Math.abs(A.roll) > 0.012 ? ' · <span class="bad">' + (A.roll > 0 ? '오른쪽' : '왼쪽') + '으로 기울어요</span>' : '') + (Math.abs(A.ail) > 0.02 ? '<br>에일러론 · <b>' + (A.ail > 0 ? '오른쪽' : '왼쪽') + '으로 돌아요</b>' : '') + '<br>예상 활공비 <b>' + A.LD.toFixed(1) + '</b> · 순항 속도 <b>' + A.Vt.toFixed(1) + ' m/s</b><br><span style="color:var(--dim)">노란 점 무게중심 · 빨간 점 잡는 곳 · 파란 화살표 앞</span>';
 }
 
 /* ================= fold / shape input ================= */
@@ -648,7 +652,7 @@ function savePlane() {
 }
 function loadPlane(it) {
   ops = it.ops.map(o => ({ ...o })); tuned = true; origin = it.origin || 'self'; creases = it.creases || []; grip = it.grip || null; fwdRot = it.fwdRot || 0; upFlip = !!it.upFlip; Object.assign(paper, it.paper || {}); paper.shape = (it.paper && SHEETS[it.paper.shape]) ? it.paper.shape : 'sq'; applyPaper();
-  [['L', it.bend ? it.bend.l : 0.3], ['R', it.bend ? it.bend.r : 0.3]].forEach(([k, v]) => { const e = $('bend' + k), n = Math.round(v * 100); e.value = n; bend[k.toLowerCase()] = n / 100; $('bend' + k + 'V').textContent = n > 0 ? '위 ' + n : n < 0 ? '아래 ' + -n : '평평'; });
+  bend.l = it.bend ? clamp(+it.bend.l || 0, -1, 1) : 0.3; bend.r = it.bend ? clamp(+it.bend.r || 0, -1, 1) : 0.3; syncTrim();
   $('hangarPop').hidden = true; refresh(); if (mode === 'shape') angleUI(); setCam(); toast('“' + it.name + '” 불러왔어요'); snd(520, 0.1, 'triangle', 0.05, 780);
 }
 function hangarUI() {
@@ -669,7 +673,7 @@ function angleUI() {
 // angles and trim set themselves unless the player has adjusted them by hand ("tuned")
 let tuned = false;
 function autoWings() { let half = -1; ops.forEach((o, i) => { if (!o.flip) { o.angle = 180; if (Math.abs(o.g[0] + o.t[0]) < 0.03 && Math.abs(o.g[1] - o.t[1]) < 0.03 && Math.abs(o.g[0]) > 0.05) half = i; } }); if (half >= 0) ops.slice(half + 1).forEach(o => { if (!o.flip && o.mode === 'flap' && Math.abs(o.g[1] - o.t[1]) < 0.06) o.angle = 90; }); }
-function autoSetup() { if (tuned || !ops.some(o => !o.flip)) return analyze(build(ops).faces); autoWings(); let A = analyze(build(ops).faces); const v = A.sm > 0.005 ? clamp(Math.round((A.a * A.sm * A.aStall * 0.62 - 0.006 - A.cmInc) / 0.05 * 20) * 5, -100, 100) : 0; if (Math.round(bend.l * 100) !== v || Math.round(bend.r * 100) !== v) { setBend(v); A = analyze(build(ops).faces); } return A; }
+function autoSetup() { if (tuned || !ops.some(o => !o.flip)) return analyze(build(ops).faces); autoWings(); let A = analyze(build(ops).faces); const v = A.sm > 0.005 ? clamp(Math.round((A.a * A.sm * A.aStall * 0.62 - 0.006 - A.cmInc) / 0.05 * 20) * 5, -100, 100) : 0; if (trimE() !== v || trimA() !== 0) { setBend(v); A = analyze(build(ops).faces); } return A; }
 function fcastUI() { const el = $('fcast'), on = mode === 'fold' && !guide && !replay && ops.some(o => !o.flip); el.hidden = !on; if (!on) return; let A; try { A = autoSetup(); } catch (e) { el.hidden = true; return; }
   const turn = Math.abs(A.asym) >= 0.04 || Math.abs(A.cgy) >= 0.02 ? ' · <span class="bad">한쪽으로 돌 수 있어요</span>' : '';
   const halfI = ops.findIndex(o => !o.flip && Math.abs(o.g[0] + o.t[0]) < 0.03 && Math.abs(o.g[1] - o.t[1]) < 0.03 && Math.abs(o.g[0]) > 0.05), noWing = halfI >= 0 && !ops.slice(halfI + 1).some(o => !o.flip);
@@ -679,10 +683,14 @@ $('bTune').onclick = () => { if (guide) guideEnd(false); autoSetup(); setMode('s
 $('shapeUI').addEventListener('input', () => { tuned = true; }); ['bWings', 'bTrim', 'bFwd', 'bUp'].forEach(id => $(id).addEventListener('click', () => { tuned = true; }));
 $('bBack').onclick = $('bRefold').onclick = $('bNew').onclick = () => setMode('fold');
 $('bWings').onclick = () => { const fs = ops.filter(o => !o.flip); fs.slice(-2).forEach(o => { o.angle = 90; }); angleUI(); refresh(); };
-$('bTrim').onclick = () => { const A = aero; if (A.sm <= 0.005) return toast('뒤가 무거워서 뒤끝으로는 맞출 수 없어요. 앞쪽을 더 접어 무겁게 해 보세요', 3200); const v = clamp(Math.round((A.a * A.sm * A.aStall * 0.62 - 0.006 - A.cmInc) / 0.05 * 20) * 5, -100, 100); setBend(v); refresh(); toast('뒤끝을 ' + (v > 0 ? '위 ' + v : v < 0 ? '아래 ' + -v : '평평') + '(으)로 맞췄어요', 2000); };
+$('bTrim').onclick = () => { const A = aero; if (A.sm <= 0.005) return toast('뒤가 무거워서 뒤끝으로는 맞출 수 없어요. 앞쪽을 더 접어 무겁게 해 보세요', 3200); const v = clamp(Math.round((A.a * A.sm * A.aStall * 0.62 - 0.006 - A.cmInc) / 0.05 * 20) * 5, -100, 100); setTrim(v, trimA()); refresh(); toast('엘리베이터를 ' + (v > 0 ? '위 ' + v : v < 0 ? '아래 ' + -v : '평평') + '(으)로 맞췄어요', 2000); };
 $('bFwd').onclick = () => { fwdRot = (fwdRot + 1) % 8; refresh(); }; $('bUp').onclick = () => { upFlip = !upFlip; refresh(); };
-const setBend = v => ['L', 'R'].forEach(k => { const e = $('bend' + k); e.value = v; bend[k.toLowerCase()] = v / 100; $('bend' + k + 'V').textContent = v > 0 ? '위 ' + v : v < 0 ? '아래 ' + -v : '평평'; }); // presets come with a sensible trim
-['L', 'R'].forEach(k => { $('bend' + k).oninput = e => { const v = +e.target.value; bend[k.toLowerCase()] = v / 100; $('bend' + k + 'V').textContent = v > 0 ? '위 ' + v : v < 0 ? '아래 ' + -v : '평평'; refresh(); }; });
+// elevator moves both trailing edges together, aileron moves them in opposite directions (right up, left down turns right)
+const trimE = () => Math.round((bend.l + bend.r) * 50), trimA = () => Math.round((bend.r - bend.l) * 100);
+function setTrim(e, a) { e = clamp(Math.round(e / 5) * 5, -100, 100); a = clamp(Math.round(a / 5) * 5, -60, 60); bend.l = clamp((e - a / 2) / 100, -1, 1); bend.r = clamp((e + a / 2) / 100, -1, 1); syncTrim(); }
+function syncTrim() { const e = trimE(), a = trimA(); $('trE').value = e; $('trA').value = a; $('trEV').textContent = e > 0 ? '위 ' + e : e < 0 ? '아래 ' + -e : '평평'; $('trAV').textContent = a > 0 ? '오른쪽 ' + a : a < 0 ? '왼쪽 ' + -a : '가운데'; }
+const setBend = (v, a) => setTrim(v, a || 0); // presets come with a sensible trim
+$('trE').oninput = e => { setTrim(+e.target.value, trimA()); refresh(); }; $('trA').oninput = e => { setTrim(trimE(), +e.target.value); refresh(); };
 $('ang').oninput = e => { $('angV').textContent = e.target.value + '°'; };
 
 /* ================= flight world ================= */
@@ -865,7 +873,7 @@ function popUp(txt, big) { const e = $('pop'); e.textContent = txt; e.className 
 const Fl = {}; let flyT = 0, events = [], nextEvt = 0, keyL = false, keyR = false, keyU = false, keyD = false, wind = V3(0, 0, 0), gustT = 0, best = 0;
 function resetFlight() {
   clearExtras(); { const r = Math.random(); setMood(window.__pp.mood || (r < 0.6 ? 'day' : r < 0.85 ? 'sunset' : 'gray')); }
-  buildPlane(); newWind(); stickReset(); keyL = keyR = keyU = keyD = false; ctl.cd = ctl.dash = ctl.spin = ctl.u = ctl.v = 0; Object.assign(Fl, { inv: 0, bias: 0, sk: 1, smoke: 0, wet: 0, abduct: 0, poops: 0, inRain: false, lv: 0, dodges: 0, spoils: 0, kinds: {}, zapped: 0, shocked: 0, charge: 0, boostT: 0, starN: 0, near: 0, boosts: 0, hits: 0, hoops: 0, therm: 0, ufo: 0, inTh: false, status: new Map(), x: 0.6, y: H0 + 1.45, z: 0, V: 0, gam: 0, psi: 0, th: 0, q: 0, phi: 0, pr: 0, t: 0, maxY: 0, flying: false, mass: aero.mass, sm: aero.sm, Cd0: aero.Cd0, pull: 0 });
+  buildPlane(); newWind(); stickReset(); keyL = keyR = keyU = keyD = false; ctl.cd = ctl.dash = ctl.spin = ctl.u = ctl.v = 0; Object.assign(Fl, { inv: 0, bias: 0, sk: 1, smoke: 0, wet: 0, abduct: 0, poops: 0, inRain: false, lv: 0, psiA: null, psiB: 0, tA: 0, tB: 0, vSum: 0, stalls: 0, stalling: 0, diveT: 0, dodges: 0, spoils: 0, kinds: {}, zapped: 0, shocked: 0, charge: 0, boostT: 0, starN: 0, near: 0, boosts: 0, hits: 0, hoops: 0, therm: 0, ufo: 0, inTh: false, status: new Map(), x: 0.6, y: H0 + 1.45, z: 0, V: 0, gam: 0, psi: 0, th: 0, q: 0, phi: 0, pr: 0, t: 0, maxY: 0, flying: false, mass: aero.mass, sm: aero.sm, Cd0: aero.Cd0, pull: 0 });
   events.forEach(e => sceneB.remove(e.g)); events = []; sparks.length = 0; trails.forEach(t => { t.pts.length = 0; }); mile = 0; record = (board()[0] || { d: 0 }).d; recordHit = false; pB.material.color.set(0xffffff); $('splat').innerHTML = ''; nextEvt = rnd(32, 48); wind.set(0, 0, 0); gustT = 0; updateChunks(0); hand.visible = true; $('dist').textContent = '0.0 m'; $('sub').textContent = '';
 }
 function physics(dt) {
@@ -883,7 +891,7 @@ function physics(dt) {
   const Cm = A.Cm0 * (1 - 0.6 * st) - A.a * Fl.sm * al * (1 - st) - 1.25 * sa * (Fl.sm + A.kPost) * st, K = qd * A.S * A.c / A.Iyy;
   Fl.q = clamp((Fl.q + K * Cm * dt) / (1 + K * 5.5 * A.c / (2 * Vs) * dt), -14, 14); Fl.th += Fl.q * dt; // pitch damping is very stiff for a few grams of paper, so it is integrated implicitly
   // roll: lopsided wings, an off-centre CG or uneven bends set a small steady bank (a gentle turn); knocks are transient and the plane rights itself
-  const stabK = 1 + 6 * Math.max(0, A.gam) + 10 * Math.max(0, A.zw / A.b), raw = (2.2 * A.asym + 5 * A.cgy + 6 * A.roll + 8 * Fl.bias) / stabK, phiT = clamp(Math.sign(raw) * Math.max(0, Math.abs(raw) - 0.035), -0.28, 0.28), w = 4.5;
+  const stabK = 1 + 6 * Math.max(0, A.gam) + 10 * Math.max(0, A.zw / A.b), raw = (2.2 * A.asym + 5 * A.cgy + 6 * A.roll + 8 * Fl.bias) / stabK, phiT = clamp(Math.sign(raw) * Math.max(0, Math.abs(raw) - 0.035) + 0.2 * (A.ail || 0), -0.28, 0.28), w = 4.5;
   Fl.pr += (-Math.sin(Fl.phi - phiT) * w * w - 1.7 * w * Fl.pr) * dt + (Math.random() - 0.5) * (0.6 + 6 * st) * dt; Fl.pr = clamp(Fl.pr, -16, 16); Fl.phi += Fl.pr * dt;
   let wy = 0; for (const t of thermals) if (Fl.y < 42 && Math.hypot(Fl.x - t.x, Fl.z - t.z) < t.r) { wy = t.w; if (Fl.status) { if (!Fl.status.has('상승기류')) { sfx('lift'); ring(Fl.x, Fl.y, Fl.z, 0xfff2a8, 3, 0.5); } Fl.status.set('상승기류', 0.25); if (Math.random() < 0.02) spark(Fl.x + rnd(-1, 1), Fl.y - 0.5, Fl.z + rnd(-1, 1), 0xfff2a8, 0.05, 0.8, 0, 3, 0, 0, 0, true); } }
   Fl.x += (vh * Math.cos(Fl.psi) + wind.x + W0.x) * dt; Fl.z += (vh * Math.sin(Fl.psi) + wind.z + W0.z) * dt; Fl.y += (vy + wy + wind.y) * dt;
@@ -934,6 +942,12 @@ function flightExtras() {
   // a boost is three seconds of steady thrust that also holds the nose up, not a single kick
   if (Fl.boostT > 0) { Fl.boostT -= dtE; Fl.V = Math.min(Fl.V + 2.6 * dtE, Math.max(Fl.V, 12)); if (Fl.gam < 0.06) Fl.gam += (0.06 - Fl.gam) * Math.min(1, dtE * 3.5); for (const k of [...Fl.status.keys()]) if (k.startsWith('부스트 ')) Fl.status.delete(k); Fl.status.set('부스트 ' + Math.max(0, Fl.boostT).toFixed(1) + '초', 0.2); shake = Math.max(shake, 0.06);
     for (let k = 0; k < 2; k++) spark(Fl.x - hc * 0.35, Fl.y + rnd(-0.1, 0.1), Fl.z - hs * 0.35 + rnd(-0.25, 0.25), k ? 0xffd84a : 0xffffff, rnd(0.04, 0.07), rnd(0.25, 0.5), hc * Fl.V * 0.5, rnd(-0.4, 0.4), hs * Fl.V * 0.5, 0, 0, true, 0); if (Fl.boostT <= 0) sfx('dodge'); }
+  // tuning measurements, before anything knocks the plane about
+  // heading change while nothing has hit the plane: that is the plane's own turn, which the aileron corrects
+  if (!Fl.hits && Fl.abduct <= 0 && Fl.t > 0.8 && Fl.t < 9 && Math.abs(Fl.z) < 42) { if (Fl.psiA == null) { Fl.psiA = Fl.psi; Fl.tA = Fl.t; } Fl.psiB = Fl.psi; Fl.tB = Fl.t; Fl.vSum += Fl.V * dtE; }
+  // climb-and-drop cycles (the nose rises, the plane slows, it drops) count as stalls; long unforced steep dives count as diving
+  if (Fl.gam > 0.12) Fl.stalling = 1; else if (Fl.stalling && Fl.gam < -0.12) { Fl.stalling = 0; Fl.stalls++; }
+  if (Fl.t > 0.5 && Fl.gam < -0.45 && ctl.v > -0.1 && !(Fl.boostT > 0) && !Fl.hits) Fl.diveT += dtE;
   fxEmit(dtE);
   // stars to steer for: five of them charge one boost
   if (Fl.s + 46 > nextStar && Fl.y > 3.5 && stars.length < 12) { const jz = rnd(-6.5, 6.5), bx = ox + 46, by = clamp(Fl.y + clamp(Math.sin(Fl.gam), -0.35, 0.04) * 42, 2.6, 40), bz = oz + jz, wig = rnd(-1.2, 1.2); nextStar = Fl.s + 46 + rnd(30, 48);
@@ -1252,8 +1266,20 @@ function fxEmit(dt) { const F = FX.find(q => q.id === fx), on = !!F && fx !== 'n
     else if (fx === 'rainbow') fxSprite(FXT.twinkle, px, y + rnd(0, 0.15), pz, { size: rnd(0.08, 0.14), life: rnd(0.4, 0.7), col: pk(RAINBOW), add: true, vx: ux * 0.9, vy: uy + rnd(0, 0.4), vz: uz * 0.9, flick: 12 });
     else if (fx === 'bolt') { const len = rnd(0.55, 1.1) * B; fxSprite(pk(FXT.bolt), x - cp * len * 0.35 - sp * j, y + rnd(-0.08, 0.08), z - sp * len * 0.35 + cp * j, { size: len * 0.5, asp: 2, life: rnd(0.07, 0.14), add: true, vx: ux, vy: uy, vz: uz, rot: rnd(-0.6, 0.6) + (Math.random() < 0.5 ? Math.PI : 0), flick: 60 }); if (Math.random() < 0.6) spark(px, y, pz, 0xbfd6ff, rnd(0.02, 0.04), rnd(0.15, 0.3), ux + rnd(-3, 3), uy + rnd(-3, 3), uz + rnd(-3, 3), 0, 0, true, 0); }
     else if (fx === 'gold') fxSprite(FXT.glint, px, y + rnd(-0.06, 0.06), pz, { size: rnd(0.06, 0.13), life: rnd(0.8, 1.3), col: pk([0xffd84a, 0xfff2a8, 0xffc21a]), add: true, vx: ux * 0.85 + rnd(-0.5, 0.5) * B, vy: uy + rnd(-0.2, 0.7) * B, vz: uz * 0.85 + rnd(-0.6, 0.6) * B, grav: 2.4, spin: rnd(-8, 8), flick: rnd(14, 24), rot: rnd(0, 1.5) }); } }
+let tuneFix = null;
+function tuneAdvice() { const out = [], e = trimE(), a = trimA(), A = aero, trimA0 = A.sm > 0.005 ? A.Cm0 / (A.a * A.sm) : 0, high = A.sm > 0.005 && trimA0 > A.aStall * 0.92, low = A.sm > 0.005 && trimA0 < 0.07, best = A.sm > 0.005 ? clamp(Math.round((A.a * A.sm * A.aStall * 0.62 - 0.006 - A.cmInc) / 0.05 * 20) * 5, -100, 100) : e, toward = (sg, fb) => { const d = best - e; return Math.sign(d) === sg && Math.abs(d) >= 10 ? clamp(d, -40, 40) : fb; }; let dE = 0, dA = 0;
+  if (A.sm <= 0.005) out.push(['뒤가 무거워요', '앞쪽을 조금 더 접어 기수를 무겁게 해 보세요']);
+  else if (Fl.stalls >= 3 || (high && Fl.stalls >= 1)) { if (e <= -40) out.push(['들렸다 떨어지기를 반복했어요', '앞쪽을 조금 더 접어 기수를 무겁게 해 보세요']); else { dE = high ? toward(-1, -15) : -10; out.push(['들렸다 떨어지기를 반복했어요', '엘리베이터를 ' + -dE + ' 내려 보세요']); } }
+  else if (Fl.t > 0.5 && (Fl.diveT > Math.max(0.8, Fl.t * 0.3) || (low && Fl.diveT > 0.6))) { if (e >= 85) out.push(['곤두박질쳤어요', '던지는 각도를 조금 높이거나 앞쪽을 덜 무겁게 접어 보세요']); else { dE = low ? toward(1, 15) : Fl.diveT > Fl.t * 0.5 ? 15 : 10; out.push(['곤두박질쳤어요', '엘리베이터를 ' + dE + ' 올려 보세요']); } }
+  const span = Fl.tB - Fl.tA; if (Fl.psiA != null && span > 1.5) { const rate = (Fl.psiB - Fl.psiA) / span, v = Math.max(2.5, Fl.vSum / span), perUnit = 0.6 * 9.8 * 0.002 / v;
+    if (Math.abs(rate) > 0.03) { dA = clamp(Math.round(-rate / perUnit / 5) * 5, -30, 30); if (!dA) dA = rate > 0 ? -5 : 5; const side = rate > 0 ? '오른쪽' : '왼쪽';
+      if (Math.abs(a + dA) > 60) { dA = 0; out.push([side + '으로 휘었어요', '에일러론이 끝까지 왔어요. 양쪽 날개를 똑같이 접었는지 확인해 보세요']); } else out.push([side + '으로 휘었어요', '에일러론을 ' + (dA > 0 ? '오른쪽' : '왼쪽') + '으로 ' + Math.abs(dA) + ' 옮겨 보세요']); } }
+  return { out, dE, dA }; }
+function tuneUI() { const el = $('rTune'), t = tuneAdvice(); tuneFix = t.dE || t.dA ? t : null; if (!Fl.t) { el.hidden = true; return; } el.hidden = false;
+  el.innerHTML = '<b>튜닝 조언</b>' + (t.out.length ? '<ul>' + t.out.map(q => '<li><span>' + q[0] + '</span> → <span>' + q[1] + '</span></li>').join('') + '</ul>' : '<span>똑바로 잘 날았어요. 이 설정 그대로 더 세게 던져 보세요</span>') + (tuneFix ? '<button type="button" id="bTuneFix" class="pri">추천대로 고치고 다시 날리기</button>' : '');
+  if (tuneFix) $('bTuneFix').onclick = () => { setTrim(trimE() + tuneFix.dE, trimA() + tuneFix.dA); tuned = true; toast('엘리베이터 ' + $('trEV').textContent + ' · 에일러론 ' + $('trAV').textContent, 2200); sfx('save'); $('bAgain').onclick(); }; }
 const MEDALS = [[400, '다이아 메달'], [250, '금메달'], [120, '은메달'], [50, '동메달']];
-function finishExtras(d, bull) { ribbon.visible = false; if (d > ((bestLoad() || { d: 0 }).d)) { try { localStorage.setItem(GK, JSON.stringify({ d: +d.toFixed(1), x: +Fl.x.toFixed(1), z: +Fl.z.toFixed(1) })); } catch (e) {} }
+function finishExtras(d, bull) { ribbon.visible = false; tuneUI(); if (d > ((bestLoad() || { d: 0 }).d)) { try { localStorage.setItem(GK, JSON.stringify({ d: +d.toFixed(1), x: +Fl.x.toFixed(1), z: +Fl.z.toFixed(1) })); } catch (e) {} }
   $('rInfo').innerHTML += '<br><span>별</span> <b>' + Fl.starN + '</b> · <span>고리</span> <b>' + Fl.hoops + '</b> · <span>아슬아슬</span> <b>' + Fl.near + '</b>' + (challenge ? '<br><span>도전</span> <b>' + challenge.d.toFixed(1) + ' m</b>: ' + (d > challenge.d ? '<b>도전 성공!</b>' : '<b>' + (challenge.d - d).toFixed(1) + ' m</b> <span>부족</span>') : '');
   const S = statsLoad(), sh = paper.shape || 'sq', folds = ops.filter(o => !o.flip).length, mx = (k, v) => { S.b[k] = Math.max(+S.b[k] || 0, Math.round(v * 10) / 10); }, ad = (k, v) => { S.t[k] = Math.round(((+S.t[k] || 0) + v) * 10) / 10; };
   ad('flights', 1); ad('dist', d); ad('time', Fl.t); ad('stars', Fl.starN); ad('hoops', Fl.hoops); ad('near', Fl.near); ad('therm', Fl.therm); ad('boosts', Fl.boosts); if (Fl.ufo) ad('ufo', 1); if (bull) ad('bull', 1);
@@ -1521,7 +1547,7 @@ function frame(t) {
 }
 function resize() { const w = canvas.clientWidth, h = canvas.clientHeight; renderer.setSize(w, h, false); camB.aspect = w / h; camB.fov = w < h ? 78 : 62; camB.updateProjectionMatrix(); setCam(); }
 addEventListener('resize', resize);
-window.__pp = { force: null, ACH, statsLoad, checkAch, emitG, get curMood() { return curMood; }, boost, addStar, get stars() { return stars; }, get fx() { return fx; }, setFx, FX, get challenge() { return challenge; }, spawn: k => SPOIL[k](), autoSetup, get tuned() { return tuned; }, get aimP() { return aimP; }, setSheet, lvl, setSound, setPause, get paused() { return paused; }, paperG, camA, get suggs() { return suggs; }, applySugg, tapFold, mood: null, planeCode, planeFromCode, importCode, award, achGot, get hoops() { return hoops; }, get pads() { return pads; }, get path() { return path; }, get marks() { return fmarks; }, get guide() { return guide; }, get replay() { return replay; }, guideStart, replayStart, commitFold, set sym(v) { sym = v; }, planeG, camB, setGrip(g) { grip = g; refresh(); }, setLang, L, get lang() { return lang; }, AU, sparks, knock, ring, spark, popUp, get quality() { return quality; }, hangar, control, W0, paper, applyPaper, vo, ctl, dodge, get calls() { return renderer.info.render.calls; }, get trail() { return trail; }, get events() { return events; }, get ops() { return ops; }, set ops(v) { ops = v; refresh(); }, get aero() { return aero; }, Fl, launch, build, analyze, setMode, PRESET, get cur() { return cur; }, get mode() { return mode; }, physics };
+window.__pp = { force: null, setTrim, trimE, trimA, tuneAdvice, ACH, statsLoad, checkAch, emitG, get curMood() { return curMood; }, boost, addStar, get stars() { return stars; }, get fx() { return fx; }, setFx, FX, get challenge() { return challenge; }, spawn: k => SPOIL[k](), autoSetup, get tuned() { return tuned; }, get aimP() { return aimP; }, setSheet, lvl, setSound, setPause, get paused() { return paused; }, paperG, camA, get suggs() { return suggs; }, applySugg, tapFold, mood: null, planeCode, planeFromCode, importCode, award, achGot, get hoops() { return hoops; }, get pads() { return pads; }, get path() { return path; }, get marks() { return fmarks; }, get guide() { return guide; }, get replay() { return replay; }, guideStart, replayStart, commitFold, set sym(v) { sym = v; }, planeG, camB, setGrip(g) { grip = g; refresh(); }, setLang, L, get lang() { return lang; }, AU, sparks, knock, ring, spark, popUp, get quality() { return quality; }, hangar, control, W0, paper, applyPaper, vo, ctl, dodge, get calls() { return renderer.info.render.calls; }, get trail() { return trail; }, get events() { return events; }, get ops() { return ops; }, set ops(v) { ops = v; refresh(); }, get aero() { return aero; }, Fl, launch, build, analyze, setMode, PRESET, get cur() { return cur; }, get mode() { return mode; }, physics };
 /* ---- language: Korean source text is translated on its way to the screen, so every label, toast and readout switches at once ---- */
 const I18N = {
   '1 접기': '1 Fold', '2 모양 잡기': '2 Shape', '3 날리기': '3 Fly', '게임 화면': 'Game view',
@@ -1582,12 +1608,18 @@ const I18N = {
   '별 수집가': 'Star collector', '한 번의 비행에서 별 10개 모으기': 'Collect 10 stars in one flight', '간발의 차': 'By a whisker', '한 번의 비행에서 아슬아슬하게 3번 피하기': '3 close calls in one flight', '도전자': 'Challenger', '받은 도전 기록 넘기기': 'Beat a challenge you were sent',
   '코스 가장자리 · 바람이 안쪽으로 밀어요': 'Edge of the course · the wind nudges you back in', '효과': 'Effect', '꼬리 효과': 'Trail effect', '꾸미기 전용이에요. 도전 과제를 달성하면 하나씩 열립니다.': 'Cosmetic only. Each one unlocks with a challenge.', '없음': 'None', '반짝이': 'Sparkles', '꽃잎': 'Petals', '비눗방울': 'Bubbles', '눈송이': 'Snowflakes', '불꽃': 'Flames', '무지개': 'Rainbow', '번개': 'Lightning', '황금 가루': 'Gold dust', '잠김': 'locked', '잠금 해제 조건': 'Unlock by', '보상': 'Reward', '새 효과 잠금 해제': 'New effect unlocked',
   '전체': 'All', '열린 것': 'Unlocked', '잠긴 것': 'Locked', '새 효과': 'new effect',
+  '엘리베이터': 'Elevator', '에일러론': 'Aileron', '가운데': 'centre', '엘리베이터 자동 맞춤': 'Auto elevator', '엘리베이터: 양쪽 뒤끝을 함께 올리거나 내리기': 'Elevator: raise or lower both trailing edges together', '에일러론: 한쪽 뒤끝은 올리고 다른 쪽은 내리기': 'Aileron: raise one trailing edge and lower the other',
+  '엘리베이터: 양쪽 뒤끝을 함께 올리면 기수가 들려요. 에일러론: 한쪽은 올리고 한쪽은 내려 그쪽으로 돌게 해요.': 'Elevator: raise both trailing edges to lift the nose. Aileron: raise one and lower the other to turn that way.',
+  '엘리베이터를 너무 올렸어요 · 고개를 들다 실속해 멀리 못 가요': 'Too much elevator · it stalls and falls short', '엘리베이터를 더 올리면 덜 내리꽂아요': 'More elevator would stop the dive', '엘리베이터 ': 'Elevator ', '으로 돌아요': ' turn',
+  '튜닝 조언': 'Tuning tips', '들렸다 떨어지기를 반복했어요': 'It kept climbing and dropping', '앞쪽을 조금 더 접어 기수를 무겁게 해 보세요': 'fold a little more paper into the nose', '곤두박질쳤어요': 'It dived', '뒤가 무거워요': 'Tail-heavy', '던지는 각도를 조금 높이거나 앞쪽을 덜 무겁게 접어 보세요': 'throw a little higher, or make the nose lighter',
+  '오른쪽으로 휘었어요': 'It veered right', '왼쪽으로 휘었어요': 'It veered left', '에일러론이 끝까지 왔어요. 양쪽 날개를 똑같이 접었는지 확인해 보세요': 'the aileron is at its limit; check that both wings are folded the same', '똑바로 잘 날았어요. 이 설정 그대로 더 세게 던져 보세요': 'It flew straight and true. Keep this setup and throw harder', '추천대로 고치고 다시 날리기': 'Apply and throw again',
   '최고 기록 돌파!': 'New best!', '플레이어': 'Player', '비행기': 'Plane', '각도': 'angle', '평평': 'Flat'
 };
 const I18R = [
   [/뒤끝을 위 (\d+)\(으\)로 맞췄어요/, 'Trim set to Up $1'], [/뒤끝을 아래 (\d+)\(으\)로 맞췄어요/, 'Trim set to Down $1'], [/뒤끝을 평평\(으\)로 맞췄어요/, 'Trim set to Flat'],
   [/“(.*)” 저장했어요/, 'Saved “$1”'], [/“(.*)” 불러왔어요/, 'Loaded “$1”'], [/외계인이 손을 흔들며 떠났다 \(\+(\d+) m\)/, 'The alien waved goodbye (+$1 m)'],
-  [/따라 접기 (\d+)\/(\d+): /, 'Guide $1/$2: '], [/^부스트 ([\d.]+)초$/, 'Boost $1 s'], [/^도전! (\d+) m를 넘겨 보세요$/, 'Challenge: beat $1 m'], [/^정면에서 영웅 (\d+)명이 날아옵니다! 옆으로 비켜 주세요$/, '$1 heroes coming head-on! Move aside'], [/^(\d+) m 돌파! 방해꾼이 더 거세집니다$/, '$1 m passed! The spoilers get tougher'], [/^도전 과제 (\d+)\/(\d+)$/, 'Challenges $1/$2'], [/^고리 통과 ×(\d+)$/, 'Hoop ×$1'], [/^과녁 명중! \+(\d+) m$/, 'Bullseye! +$1 m'], [/접기 (\d+)번 · /, '$1 folds · '], [/접기 (\d+) 각도/, 'Fold $1 angle'], [/^접기 (\d+)$/, 'Fold $1'], [/새똥 ×(\d+) · 무거움/, 'Droppings ×$1 · heavy'], [/젖음 \+(\d+)%/, 'Wet +$1%'],
+  [/따라 접기 (\d+)\/(\d+): /, 'Guide $1/$2: '], [/^엘리베이터를 (\d+) 내려 보세요$/, 'lower the elevator by $1'], [/^엘리베이터를 (\d+) 올려 보세요$/, 'raise the elevator by $1'], [/^에일러론을 오른쪽으로 (\d+) 옮겨 보세요$/, 'move the aileron $1 to the right'], [/^에일러론을 왼쪽으로 (\d+) 옮겨 보세요$/, 'move the aileron $1 to the left'],
+  [/^오른쪽 (\d+)$/, 'right $1'], [/^왼쪽 (\d+)$/, 'left $1'], [/^엘리베이터를 (.+)\(으\)로 맞췄어요$/, 'Elevator set to $1'], [/^엘리베이터 (.+) · 에일러론 (.+)$/, 'Elevator $1 · aileron $2'], [/^부스트 ([\d.]+)초$/, 'Boost $1 s'], [/^도전! (\d+) m를 넘겨 보세요$/, 'Challenge: beat $1 m'], [/^정면에서 영웅 (\d+)명이 날아옵니다! 옆으로 비켜 주세요$/, '$1 heroes coming head-on! Move aside'], [/^(\d+) m 돌파! 방해꾼이 더 거세집니다$/, '$1 m passed! The spoilers get tougher'], [/^도전 과제 (\d+)\/(\d+)$/, 'Challenges $1/$2'], [/^고리 통과 ×(\d+)$/, 'Hoop ×$1'], [/^과녁 명중! \+(\d+) m$/, 'Bullseye! +$1 m'], [/접기 (\d+)번 · /, '$1 folds · '], [/접기 (\d+) 각도/, 'Fold $1 angle'], [/^접기 (\d+)$/, 'Fold $1'], [/새똥 ×(\d+) · 무거움/, 'Droppings ×$1 · heavy'], [/젖음 \+(\d+)%/, 'Wet +$1%'],
   [/오른쪽으로 기울어요/, 'leans right'], [/왼쪽으로 기울어요/, 'leans left'], [/^위 (\d+)$/, 'Up $1'], [/^아래 (\d+)$/, 'Down $1'], [/초 · 높이 /, ' s · height '], [/([\d.]+)초/g, '$1 s'], [/^(앞면|뒷면) (#[0-9a-f]+)$/, (m, a, c) => (a === '앞면' ? 'Front ' : 'Back ') + c]
 ];
 let lang = 'ko'; try { if (localStorage.getItem('paper-plane-lang') === 'en') lang = 'en'; } catch (e) {}
